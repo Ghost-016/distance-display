@@ -197,6 +197,7 @@ void loop() {
 #endif
 
   //Check if its time to publish MQTT 1Hz
+  //Also check if the LEDs can be turned off
   if (pubMQTT == true) {
     pubMQTT = false;
 

@@ -30,11 +30,28 @@ SOFTWARE.
 #include <Adafruit_NeoPixel.h>
 #include <LEDring.hpp>
 
-void test_LEDs()
-{
-    //LED funtion ptr
     LEDring pixels(16, 5, NEO_GRB + NEO_KHZ800);
 
+void test_LED_Green()
+{
+    TEST_ASSERT_EQUAL(pixels.setGreen(), 1);
+    delay(1000);
+}
+
+void test_LED_Yellow()
+{
+    TEST_ASSERT_EQUAL(pixels.setYellow(), 2);
+    delay(1000);
+}
+
+void test_LED_Red()
+{
+    TEST_ASSERT_EQUAL(pixels.setRed()), 3);
+    delay(1000);
+}
+
+void test_LED_off()
+{
     TEST_ASSERT_EQUAL(pixels.off(), 0);
 }
 
@@ -46,7 +63,13 @@ void setup() {
     UNITY_BEGIN();
 
     //calls to test go here
-    RUN_TEST(test_LEDs);
+    RUN_TEST(test_LED_Greem);
+
+    RUN_TEST(test_LED_Yellow);
+
+    RUN_TEST(test_LED_Red);
+
+    RUN_TEST(test_LED_off);
 
     //
     UNITY_END();
