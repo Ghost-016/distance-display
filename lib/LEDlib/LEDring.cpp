@@ -27,9 +27,77 @@ SOFTWARE.
 #include <LEDring.hpp>
 
 
-int LEDring::GreenLight()
+int LEDring::off()
 {
-#ifndef UNIT_TEST
+  this->clear();
+
+  this->show();
+
+  return (0);
+}
+
+
+int LEDring::setGreen()
+{
+  //Set state to Green
+  state = Green;
+
+  //Reset i
+  this->i = 0;
+
+  return (1);
+}
+
+
+int LEDring::setYellow()
+{
+  //Set state to Yellow
+  state = Yellow;
+
+  //Reset i
+  this->i = 0;
+
+  return (2);
+}
+
+
+int LEDring::setRed()
+{
+  //Set state to Red
+  state = Red;
+
+  //Reset i
+  this->i = 0;
+
+  return (3);
+}
+
+
+int LEDring::update()
+{
+  //Call the appropriate state service
+  switch (state)
+  {
+  case Green:
+    GreenLightservice();
+    break;
+  case Yellow:
+    YellowLightservice();
+    break;
+  case Red:
+    RedLightservice();
+    break;
+  default:
+    off();
+    break;
+  }
+
+  return 0;
+}
+
+
+int LEDring::GreenLightservice()
+{
   //Side A, loop from 7 -> 0
   //Side B, loop from 8 -> 15
   //Turn all pixels off
@@ -42,14 +110,13 @@ int LEDring::GreenLight()
 
   //Update index
   if (--this->i < 0) this->i = 7;
-#endif
+
   return (1);
 }
 
 
-int LEDring::YellowLight()
+int LEDring::YellowLightservice()
 {
-#ifndef UNIT_TEST
   //Four pixel "chase"
   this->clear();
 
@@ -62,14 +129,13 @@ int LEDring::YellowLight()
 
   //Update index
   if (--this->i < 0) this->i = 3;
-#endif
+
   return (2);
 }
 
 
-int LEDring::RedLight()
+int LEDring::RedLightservice()
 {
-#ifndef UNIT_TEST
   static int intensity = 255;
   this->clear();
 
@@ -82,17 +148,6 @@ int LEDring::RedLight()
   //Update intensity
   intensity -= 256 / 8;
   if (intensity < 0) intensity = 255;
-#endif
+
   return (3);
-}
-
-
-int LEDring::off()
-{
-#ifndef UNIT_TEST
-  this->clear();
-
-  this->show();
-#endif
-  return (0);
 }

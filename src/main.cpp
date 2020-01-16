@@ -179,20 +179,20 @@ void loop() {
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
       if ((distance > 200.0) || (distance < 0)) {
-        ring.GreenLight();
+        ring.setGreen();
       }
       else if ((distance < 125.0) && (distance > 75.0)) {
-        ring.YellowLight();
+        ring.setYellow();
       }
       else if ((distance < 70.0) && (distance > 0.0)) {
-        ring.RedLight();
+        ring.setRed();
       }
     }
     else {
       ring.off();
     }
     //update LEDs regularly
-    //LEDfunction(pixels);
+    ring.update();
   }
 #endif
 
