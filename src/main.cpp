@@ -12,7 +12,8 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
-#include "LEDfunct.hpp"
+//Private librarys
+#include <LEDring.hpp>
 
 
 //===================================
@@ -26,12 +27,12 @@ const int BAUD_SERIAL = 115200;
 
 #if MQTT_ENABLED
 const char mqtt_server[] = { "192.168.2.103" };
-#endif
 
 const char MQTT_CLIENT_NAME[] = { "ESP8266_GARAGE" };
 
 const char distance_topic[] = { "sensor/garage/distance" };
 const char lwt_topic[] =      { "sensor/garage/status" };
+#endif
 
 const int NEOPIXEL_PIN = 5;
 const int NUMPIXELS = 16;
@@ -56,9 +57,6 @@ long lastEpochTime = 0;
 double distance = 0.00;
 double prevdistance = 0.00;
 
-//LED funtion ptr
-void (*LEDfunction)(Adafruit_NeoPixel);
-
 
 //===================================
 //  Class objects
@@ -68,7 +66,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 #endif
 
-Adafruit_NeoPixel pixels(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
+LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // Initialize sensor that uses digital pins 2(trigger) and 0(echo).
 // Might not want to use pin 0 ¯\_(ツ)_/¯
@@ -113,15 +111,13 @@ void SysTickHandler(void *pArg)
 }
 
 
-
+#ifndef UNIT_TEST
 //===================================
 //  Setup
 //===================================
 void setup() {
   //NeoPixel init
-  pixels.begin();
-  //Initialize LED function pointer to LEDoff()
-  LEDfunction = LEDoff;
+  ring.begin();
 
   setup_wifi();
 
@@ -159,21 +155,20 @@ void loop() {
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
       if ((distance > 200.0) || (distance < 0)) {
-        LEDfunction = GreenLight;
+        ring.GreenLight();
       }
       else if ((distance < 125.0) && (distance > 75.0)) {
-        LEDfunction = YellowLight;
+        ring.YellowLight();
       }
       else if ((distance < 70.0) && (distance > 0.0)) {
-        LEDfunction = RedLight;
+        ring.RedLight();
       }
-
-        LEDfunction(pixels);
     }
     else {
-      LEDfunction = LEDoff;
-      LEDfunction(pixels);
+      ring.off();
     }
+    //update LEDs regularly
+    //LEDfunction(pixels);
   }
 #endif
 
@@ -210,7 +205,7 @@ void loop() {
 bool checkBound(double newVal, double prevVal, double maxDiff) {
   return (!isnan(newVal) && ((newVal < prevVal - maxDiff) || (newVal > prevVal + maxDiff)));
 }
-
+#endif
 
 void setup_wifi()
 {
