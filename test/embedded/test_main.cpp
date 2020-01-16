@@ -46,7 +46,7 @@ void test_LED_Yellow()
 
 void test_LED_Red()
 {
-    TEST_ASSERT_EQUAL(pixels.setRed()), 3);
+    TEST_ASSERT_EQUAL(pixels.setRed(), 3);
     delay(1000);
 }
 
@@ -63,7 +63,7 @@ void setup() {
     UNITY_BEGIN();
 
     //calls to test go here
-    RUN_TEST(test_LED_Greem);
+    RUN_TEST(test_LED_Green);
 
     RUN_TEST(test_LED_Yellow);
 
