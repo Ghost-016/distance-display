@@ -22,6 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+
+/*
+  TODO: Add runtime configuration for MQTT server and topics
+  TODO: Add runtime configuration for HTTP updater username and password
+  TODO: Add runtime configuration for distances
+*/
+
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
