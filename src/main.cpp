@@ -200,7 +200,7 @@ void loop() {
  //Check if its time to update LED array 10Hz
   if (updateLED == true) {
     updateLED = false;
-    //Update distance measurment
+    //Update distance measurment, will delay for quite a while if sensor is not connected
     distance = distanceSensor.measureDistanceCm();
 
     if(!isnan(distance) && (LEDenabled == true)) {
@@ -253,7 +253,7 @@ void loop() {
 #endif
   }
   //Yeild so WiFi core can process
-  delay(0);
+  yield();
 } //Loop()
 
 
