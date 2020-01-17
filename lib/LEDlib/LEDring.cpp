@@ -39,11 +39,14 @@ int LEDring::off()
 
 int LEDring::setGreen()
 {
+  //Reset i if transitioning to green
+  if(state != Green) {
+    //Reset i
+    this->i = 0;
+  }
+
   //Set state to Green
   state = Green;
-
-  //Reset i
-  this->i = 0;
 
   return (1);
 }
@@ -51,11 +54,14 @@ int LEDring::setGreen()
 
 int LEDring::setYellow()
 {
+  //Reset i if transitioning to yellow
+  if(state != Yellow) {
+    //Reset i
+    this->i = 0;
+  }
+
   //Set state to Yellow
   state = Yellow;
-
-  //Reset i
-  this->i = 0;
 
   return (2);
 }
@@ -63,11 +69,14 @@ int LEDring::setYellow()
 
 int LEDring::setRed()
 {
+  //Reset i if transitioning to red
+  if(state != Red) {
+    //Reset i
+    this->i = 0;
+  }
+
   //Set state to Red
   state = Red;
-
-  //Reset i
-  this->i = 0;
 
   return (3);
 }
