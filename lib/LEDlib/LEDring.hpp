@@ -25,6 +25,14 @@ SOFTWARE.
 #ifndef LEDRING_HPP
 #define LEDRING_HPP
 class LEDring: public Adafruit_NeoPixel {
+private:
+    int i;
+    enum State {Off, Green, Yellow, Red};
+    State state;
+    int GreenLightservice();
+    int YellowLightservice();
+    int RedLightservice();
+
 public:
     LEDring(uint16_t n, uint16_t pin=6, neoPixelType type=NEO_GRB + NEO_KHZ800) 
         : Adafruit_NeoPixel(n, pin, type), i(0), state(Off) {}
@@ -33,12 +41,5 @@ public:
     int setYellow();
     int setRed();
     int update();
-private:
-    int i;
-    enum State {Off, Green, Yellow, Red};
-    State state;
-    int GreenLightservice();
-    int YellowLightservice();
-    int RedLightservice();
 };
 #endif  //LEDRING_HPP

@@ -30,23 +30,36 @@ SOFTWARE.
 #include <Adafruit_NeoPixel.h>
 #include <LEDring.hpp>
 
-    LEDring pixels(16, D5, NEO_GRB + NEO_KHZ800);
+    LEDring pixels(16, D1, NEO_GRB + NEO_KHZ800);
+    Adafruit_NeoPixel pixel(16, D1, NEO_GRB + NEO_KHZ800);
+
+void test_pixel()
+{
+    pixels.setPixelColor(0, pixels.Color(0, 50, 0));
+    pixels.show();
+    delay(1000);
+    pixels.clear();
+}
+
 
 void test_LED_Green()
 {
     TEST_ASSERT_EQUAL(pixels.setGreen(), 1);
+    pixels.update();
     delay(1000);
 }
 
 void test_LED_Yellow()
 {
     TEST_ASSERT_EQUAL(pixels.setYellow(), 2);
+    pixels.update();
     delay(1000);
 }
 
 void test_LED_Red()
 {
     TEST_ASSERT_EQUAL(pixels.setRed(), 3);
+    pixels.update();
     delay(1000);
 }
 
@@ -58,11 +71,14 @@ void test_LED_off()
 // setup connects serial, runs test cases
 void setup() {
     delay(2000);
+    pixels.begin();
 
     //
     UNITY_BEGIN();
 
     //calls to test go here
+    RUN_TEST(test_pixel);
+
     RUN_TEST(test_LED_Green);
 
     RUN_TEST(test_LED_Yellow);
@@ -76,7 +92,7 @@ void setup() {
 }
 
 void loop() {
-    //nothing to be done here
+    
 }
 
 #endif

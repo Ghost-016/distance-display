@@ -27,6 +27,7 @@ SOFTWARE.
   TODO: Add runtime configuration for MQTT server and topics
   TODO: Add runtime configuration for HTTP updater username and password
   TODO: Add runtime configuration for distances
+  TODO: Add runtime configuration for LED brightness
 */
 #ifndef UNIT_TEST
 
@@ -52,7 +53,8 @@ SOFTWARE.
 //  Defines/Constants
 //===================================
 #define LED_ENABLED  1
-#define MQTT_ENABLED  0
+#define WIFI_ENABLED 0
+#define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
 const int BAUD_SERIAL = 115200;
@@ -66,7 +68,9 @@ const char distance_topic[] = { "sensor/garage/distance" };
 const char lwt_topic[] =      { "sensor/garage/status" };
 #endif
 
-const int NEOPIXEL_PIN = D5;
+const int ULTRASONIC_TRIGGER = D3;
+const int ULTRASONIC_ECHO = D2;
+const int NEOPIXEL_PIN = D1;
 const int NUMPIXELS = 16;
 
 const float DIST_HYS = 5.0;
@@ -88,6 +92,11 @@ long lastEpochTime = 0;
 //distance
 double distance = 0.00;
 double prevdistance = 0.00;
+//distance bounds (to be made configurable at runtime)
+double farDistance = 200.0;
+double midDistance = 75.0;
+double nearDistance = 40.0;
+double hystDistance = 5.0;
 
 
 //===================================
@@ -100,12 +109,13 @@ PubSubClient client(espClient);
 
 LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
-// Initialize sensor that uses digital pins 2(trigger) and 0(echo).
-// Might not want to use pin 0 ¯\_(ツ)_/¯
-UltraSonicDistanceSensor distanceSensor(D3, D2);
+// Initialize sensor (trigger, echo)
+UltraSonicDistanceSensor distanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
 
+#if WIFI_ENABLED
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
+#endif
 
 os_timer_t SysTick; //Technically just a type but...its special
 
@@ -114,7 +124,11 @@ os_timer_t SysTick; //Technically just a type but...its special
 //  Prototypes
 //===================================
 bool checkBound(double newVal, double prevVal, double maxDiff);
+
+#if WIFI_ENABLED
 void setup_wifi();
+#endif
+
 #if MQTT_ENABLED
 void reconnect();
 #endif
@@ -154,7 +168,9 @@ void setup() {
   //NeoPixel init
   ring.begin();
 
+#if WIFI_ENABLED
   setup_wifi();
+#endif
 
 #if MQTT_ENABLED
   client.setServer(mqtt_server, 1883);
@@ -189,13 +205,13 @@ void loop() {
 
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
-      if ((distance > 200.0) || (distance < 0)) {
+      if ((distance > farDistance) || (distance < 0)) {
         ring.setGreen();
       }
-      else if ((distance < 125.0) && (distance > 75.0)) {
+      else if ((distance < midDistance) && (distance > (nearDistance + hystDistance))) {
         ring.setYellow();
       }
-      else if ((distance < 70.0) && (distance > 0.0)) {
+      else if ((distance < nearDistance) && (distance > 0.0)) {
         ring.setRed();
       }
     }
@@ -222,15 +238,19 @@ void loop() {
       LEDenabled = true;
     }
     else {
+#if WIFI_ENABLED
       //Check if the distance has changed a reasonable ammount in the last 30 seconds
       if(timeClient.getEpochTime() - lastEpochTime >= LEDTIMEOUT) {
         lastEpochTime = timeClient.getEpochTime();
         //disable LEDs
         LEDenabled = false;
       }
+#endif
     }
+#if WIFI_ENABLED
     //Update time client
     timeClient.update();    
+#endif
   }
   //Yeild so WiFi core can process
   delay(0);
@@ -243,6 +263,7 @@ bool checkBound(double newVal, double prevVal, double maxDiff) {
 }
 #endif
 
+#if WIFI_ENABLED
 void setup_wifi()
 {
   //Straight from the basic library example
@@ -252,6 +273,7 @@ void setup_wifi()
   //NTP client
   timeClient.begin();
 }
+#endif
 
 #if MQTT_ENABLED
 void reconnect()
