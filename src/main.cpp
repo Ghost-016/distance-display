@@ -28,6 +28,7 @@ SOFTWARE.
   TODO: Add runtime configuration for HTTP updater username and password
   TODO: Add runtime configuration for distances
 */
+#ifndef UNIT_TEST
 
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -65,7 +66,7 @@ const char distance_topic[] = { "sensor/garage/distance" };
 const char lwt_topic[] =      { "sensor/garage/status" };
 #endif
 
-const int NEOPIXEL_PIN = 5;
+const int NEOPIXEL_PIN = D5;
 const int NUMPIXELS = 16;
 
 const float DIST_HYS = 5.0;
@@ -101,7 +102,7 @@ LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // Initialize sensor that uses digital pins 2(trigger) and 0(echo).
 // Might not want to use pin 0 ¯\_(ツ)_/¯
-UltraSonicDistanceSensor distanceSensor(2, 0);
+UltraSonicDistanceSensor distanceSensor(D3, D2);
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
@@ -142,11 +143,14 @@ void SysTickHandler(void *pArg)
 }
 
 
-#ifndef UNIT_TEST
+
 //===================================
 //  Setup
 //===================================
 void setup() {
+  
+  Serial.begin(BAUD_SERIAL);
+
   //NeoPixel init
   ring.begin();
 

@@ -30,7 +30,7 @@ SOFTWARE.
 #include <Adafruit_NeoPixel.h>
 #include <LEDring.hpp>
 
-    LEDring pixels(16, 5, NEO_GRB + NEO_KHZ800);
+    LEDring pixels(16, D5, NEO_GRB + NEO_KHZ800);
 
 void test_LED_Green()
 {
