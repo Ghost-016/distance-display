@@ -101,11 +101,6 @@ long lastEpochTime = 0;
 //distance
 float distance = 0.00;
 float prevdistance = 0.00;
-//distance bounds (to be made configurable at runtime)
-const float farDistance = 200.0;
-const float midDistance = 75.0;
-const float nearDistance = 40.0;
-const float hystDistance = 5.0;
 
 //Persistant parameters
 struct user_vars
@@ -122,6 +117,8 @@ struct user_vars
   char lwt_status_running[32] =  "connected" ;
   uint8_t LEDbrightness = 50;
 };
+
+struct user_vars uvars;
 
 
 
@@ -243,13 +240,13 @@ void loop() {
 
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
-      if ((distance > farDistance) || (distance < 0)) {
+      if ((distance > uvars.farDistance) || (distance < 0)) {
         ring.setGreen();
       }
-      else if ((distance < midDistance) && (distance > (nearDistance + hystDistance))) {
+      else if ((distance < uvars.midDistance) && (distance > (uvars.nearDistance + uvars.hystDistance))) {
         ring.setYellow();
       }
-      else if ((distance < nearDistance) && (distance > 0.0)) {
+      else if ((distance < uvars.nearDistance) && (distance > 0.0)) {
         ring.setRed();
       }
     }
@@ -274,6 +271,10 @@ void loop() {
       }
 #endif  //#if MQTT_ENABLED
       LEDenabled = true;
+#if WIFI_ENABLED
+      //update lastEpochTime to reset the timeout
+      lastEpochTime = timeClient.getEpochTime();
+#endif  //#if WIFI_ENABLED
     }
     else {
 #if WIFI_ENABLED
