@@ -98,13 +98,13 @@ bool LEDenabled = true;
 long lastEpochTime = 0;
 
 //distance
-double distance = 0.00;
-double prevdistance = 0.00;
+float distance = 0.00;
+float prevdistance = 0.00;
 //distance bounds (to be made configurable at runtime)
-double farDistance = 200.0;
-double midDistance = 75.0;
-double nearDistance = 40.0;
-double hystDistance = 5.0;
+float farDistance = 200.0;
+float midDistance = 75.0;
+float nearDistance = 40.0;
+float hystDistance = 5.0;
 
 
 //===================================
@@ -135,7 +135,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 //===================================
 //  Prototypes
 //===================================
-bool checkBound(double newVal, double prevVal, double maxDiff);
+bool checkBound(float newVal, float prevVal, float maxDiff);
 
 #if WIFI_ENABLED
 void setup_wifi();
@@ -275,7 +275,7 @@ void loop() {
 
 
 //Returns true if newVal is greater or less than prevVal by maxDiff
-bool checkBound(double newVal, double prevVal, double maxDiff) {
+bool checkBound(float newVal, float prevVal, float maxDiff) {
   return (!isnan(newVal) && ((newVal < prevVal - maxDiff) || (newVal > prevVal + maxDiff)));
 }
 #endif  //#ifdef UNIT_TEST
@@ -289,6 +289,9 @@ void setup_wifi()
 
   //NTP client
   timeClient.begin();
+  //Set the last time to when we start so LEDs will go for ~max timout time
+  timeClient.update();
+  lastEpochTime = timeClient.getEpochTime();
 
   //Web updater server
   MDNS.begin(host);
