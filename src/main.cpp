@@ -53,23 +53,19 @@ SOFTWARE.
 
 
 //===================================
-//  Defines/Constants
+//  Configuration
 //===================================
+
 #define LED_ENABLED  1
 #define WIFI_ENABLED 1
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
+//===================================
+//  Constants
+//===================================
+
 const int BAUD_SERIAL = 115200;
-
-#if MQTT_ENABLED
-const char mqtt_server[] = { "192.168.2.103" };
-
-const char MQTT_CLIENT_NAME[] = { "ESP8266_GARAGE" };
-
-const char distance_topic[] = { "sensor/garage/distance" };
-const char lwt_topic[] =      { "sensor/garage/status" };
-#endif  //#if MQTT_ENABLED
 
 const int ULTRASONIC_TRIGGER = D3;
 const int ULTRASONIC_ECHO = D2;
@@ -82,8 +78,6 @@ const int LEDTIMEOUT = 30;
 //Web updater
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
-const char* update_username = "admin";
-const char* update_password = "admin";
 
 
 //===================================
@@ -105,6 +99,7 @@ float prevdistance = 0.00;
 //Persistant parameters
 struct user_vars
 {
+  int version;
   float farDistance = 200.0;
   float midDistance = 75.0;
   float nearDistance = 40.0;
@@ -112,6 +107,8 @@ struct user_vars
   char upload_user[32] =  "admin" ;
   char upload_pwrd[32] =  "admin" ;
   char MQTT_server[16] =  "192.168.2.103" ;
+  char MQTT_client_name[32] = "ESP8266_GARAGE";
+  char distance_topic[64] = "sensor/garage/distance";
   char lwt_topic[64] = "sensor/garage/status" ;
   char lwt_status_disconnected[32] =  "disconnected" ;
   char lwt_status_running[32] =  "connected" ;
@@ -203,7 +200,7 @@ void setup() {
 #endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
-  client.setServer(mqtt_server, 1883);
+  client.setServer(uvars.MQTT_server, 1883);
 #endif  //#if MQTT_ENABLED
 
   //SysTick init
@@ -267,7 +264,7 @@ void loop() {
       prevdistance = distance;
 #if MQTT_ENABLED
       if(client.connected()) {
-        client.publish(distance_topic, String(distance).c_str(), true);
+        client.publish(uvars.distance_topic, String(distance).c_str(), true);
       }
 #endif  //#if MQTT_ENABLED
       LEDenabled = true;
@@ -318,7 +315,7 @@ void setup_wifi()
   //Web updater server
   MDNS.begin(host);
 
-  httpUpdater.setup(&httpServer, update_path, update_username, update_password);
+  httpUpdater.setup(&httpServer, update_path, uvars.upload_user, uvars.upload_pwrd);
   httpServer.begin();
 
   MDNS.addService("http", "tcp", 80);
@@ -335,7 +332,7 @@ void reconnect()
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
-      if (client.connect(MQTT_CLIENT_NAME, lwt_topic, 2, true, "disconnected")) {
+      if (client.connect(uvars.MQTT_client_name, uvars.lwt_topic, 2, true, uvars.lwt_status_disconnected)) {
         //Serial.println("connected");
         lastReconnectAttempt = 0;
       }
@@ -349,6 +346,6 @@ void reconnect()
     }
   }
   //Connected, update LWT topic
-  client.publish(lwt_topic, "connected");
+  client.publish(uvars.lwt_topic, uvars.lwt_status_running);
 }
 #endif  //#if MQTT_ENABLED
