@@ -45,6 +45,8 @@ SOFTWARE.
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
+#include <EEPROM.h>
+
 //Private librarys
 #include <LEDring.hpp>
 
@@ -90,13 +92,29 @@ bool LEDenabled = true;
 long lastEpochTime = 0;
 
 //distance
-double distance = 0.00;
-double prevdistance = 0.00;
+float distance = 0.00;
+float prevdistance = 0.00;
 //distance bounds (to be made configurable at runtime)
-double farDistance = 200.0;
-double midDistance = 75.0;
-double nearDistance = 40.0;
-double hystDistance = 5.0;
+const float farDistance = 200.0;
+const float midDistance = 75.0;
+const float nearDistance = 40.0;
+const float hystDistance = 5.0;
+
+//Persistant parameters
+struct user_vars
+{
+  float farDistance;
+  float midDistance;
+  float nearDistance;
+  float hystDistance;
+  char upload_user[32];
+  char upload_pwrd[32];
+  char MQTT_server[16];
+  char lwt_topic[64];
+  char lwt_status[32];
+  uint8_t LEDbrightness;
+};
+
 
 
 //===================================
@@ -164,6 +182,9 @@ void SysTickHandler(void *pArg)
 void setup() {
   
   Serial.begin(BAUD_SERIAL);
+
+  //Start EEPROM with 512 bytes
+  EEPROM.begin(512);
 
   //NeoPixel init
   ring.begin();
