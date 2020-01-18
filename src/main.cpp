@@ -253,6 +253,10 @@ void loop() {
       }
 #endif  //#if MQTT_ENABLED
       LEDenabled = true;
+#if WIFI_ENABLED
+      //update lastEpochTime to reset the timeout
+      lastEpochTime = timeClient.getEpochTime();
+#endif  //#if WIFI_ENABLED
     }
     else {
 #if WIFI_ENABLED
