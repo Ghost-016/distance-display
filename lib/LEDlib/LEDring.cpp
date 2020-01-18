@@ -29,8 +29,13 @@ SOFTWARE.
 
 int LEDring::off()
 {
+  //Update state
+  state = Off;
+
+  //Clear all LEDs
   this->clear();
 
+  //Send data out
   this->show();
 
   return (0);

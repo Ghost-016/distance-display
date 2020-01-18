@@ -46,6 +46,7 @@ SOFTWARE.
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
 #include <EEPROM.h>
+#include <ESP8266HTTPUpdateServer.h>
 
 //Private librarys
 #include <LEDring.hpp>
@@ -55,7 +56,7 @@ SOFTWARE.
 //  Defines/Constants
 //===================================
 #define LED_ENABLED  1
-#define WIFI_ENABLED 0
+#define WIFI_ENABLED 1
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
@@ -68,7 +69,7 @@ const char MQTT_CLIENT_NAME[] = { "ESP8266_GARAGE" };
 
 const char distance_topic[] = { "sensor/garage/distance" };
 const char lwt_topic[] =      { "sensor/garage/status" };
-#endif
+#endif  //#if MQTT_ENABLED
 
 const int ULTRASONIC_TRIGGER = D3;
 const int ULTRASONIC_ECHO = D2;
@@ -77,6 +78,12 @@ const int NUMPIXELS = 16;
 
 const float DIST_HYS = 5.0;
 const int LEDTIMEOUT = 30;
+
+//Web updater
+const char* host = "esp8266-webupdate";
+const char* update_path = "/firmware";
+const char* update_username = "admin";
+const char* update_password = "admin";
 
 
 //===================================
@@ -124,7 +131,7 @@ struct user_vars
 #if MQTT_ENABLED
 WiFiClient espClient;
 PubSubClient client(espClient);
-#endif
+#endif  //#if MQTT_ENABLED
 
 LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -134,23 +141,27 @@ UltraSonicDistanceSensor distanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
 #if WIFI_ENABLED
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
-#endif
+#endif  //#if WIFI_ENABLED
 
 os_timer_t SysTick; //Technically just a type but...its special
+
+//Web updater
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
 
 
 //===================================
 //  Prototypes
 //===================================
-bool checkBound(double newVal, double prevVal, double maxDiff);
+bool checkBound(float newVal, float prevVal, float maxDiff);
 
 #if WIFI_ENABLED
 void setup_wifi();
-#endif
+#endif  //#if WIFI_ENALBED
 
 #if MQTT_ENABLED
 void reconnect();
-#endif
+#endif  //#if MQTT_ENABLED
 
 //===================================
 //  SysTick ISR
@@ -192,11 +203,11 @@ void setup() {
 
 #if WIFI_ENABLED
   setup_wifi();
-#endif
+#endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
   client.setServer(mqtt_server, 1883);
-#endif
+#endif  //#if MQTT_ENABLED
 
   //SysTick init
   os_timer_setfn(&SysTick, &SysTickHandler, NULL);
@@ -215,7 +226,12 @@ void loop() {
     reconnect();
   }
   client.loop();
-#endif
+#endif //#if MQTT_ENABLED
+
+#if WIFI_ENABLED
+  httpServer.handleClient();
+  MDNS.update();
+#endif //#if WIFI_ENABLED
 
 
 #if LED_ENABLED
@@ -243,7 +259,7 @@ void loop() {
     //update LEDs regularly
     ring.update();
   }
-#endif
+#endif  //#if LED_ENABLED
 
   //Check if its time to publish MQTT 1Hz
   //Also check if the LEDs can be turned off
@@ -256,7 +272,7 @@ void loop() {
       if(client.connected()) {
         client.publish(distance_topic, String(distance).c_str(), true);
       }
-#endif
+#endif  //#if MQTT_ENABLED
       LEDenabled = true;
     }
     else {
@@ -267,12 +283,12 @@ void loop() {
         //disable LEDs
         LEDenabled = false;
       }
-#endif
+#endif  //#if WIFI_ENABLED
     }
 #if WIFI_ENABLED
     //Update time client
     timeClient.update();    
-#endif
+#endif  //#if WIFI_ENABLED
   }
   //Yeild so WiFi core can process
   yield();
@@ -280,10 +296,10 @@ void loop() {
 
 
 //Returns true if newVal is greater or less than prevVal by maxDiff
-bool checkBound(double newVal, double prevVal, double maxDiff) {
+bool checkBound(float newVal, float prevVal, float maxDiff) {
   return (!isnan(newVal) && ((newVal < prevVal - maxDiff) || (newVal > prevVal + maxDiff)));
 }
-#endif
+#endif  //#ifdef UNIT_TEST
 
 #if WIFI_ENABLED
 void setup_wifi()
@@ -294,8 +310,19 @@ void setup_wifi()
 
   //NTP client
   timeClient.begin();
+  //Set the last time to when we start so LEDs will go for ~max timout time
+  timeClient.update();
+  lastEpochTime = timeClient.getEpochTime();
+
+  //Web updater server
+  MDNS.begin(host);
+
+  httpUpdater.setup(&httpServer, update_path, update_username, update_password);
+  httpServer.begin();
+
+  MDNS.addService("http", "tcp", 80);
 }
-#endif
+#endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
 void reconnect()
@@ -323,4 +350,4 @@ void reconnect()
   //Connected, update LWT topic
   client.publish(lwt_topic, "connected");
 }
-#endif
+#endif  //#if MQTT_ENABLED
