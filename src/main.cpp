@@ -99,7 +99,7 @@ float prevdistance = 0.00;
 //Persistant parameters
 struct user_vars
 {
-  int version;
+  const int version = 1;
   float farDistance = 200.0;
   float midDistance = 75.0;
   float nearDistance = 40.0;
@@ -349,3 +349,13 @@ void reconnect()
   client.publish(uvars.lwt_topic, uvars.lwt_status_running);
 }
 #endif  //#if MQTT_ENABLED
+
+bool EEPROM_valid()
+{
+  if(EEPROM.read(0) == 0xFF) {
+    return false;
+  }
+  else {
+    return true;
+  }
+}
