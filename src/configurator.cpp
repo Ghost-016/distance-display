@@ -29,6 +29,8 @@ SOFTWARE.
     0 is for back or quit or cancel
     A \r\n from client on a menu resends the menu
     A \r\n from client on configuring an options takes the defualt
+
+    During user input, block waiting on serial data in
 */
 
 #include "HardwareSerial.h"
@@ -93,6 +95,23 @@ void Configurator::service()
         menuDecode(selection);
     }
     
+}
+
+/*
+    Blocking function
+*/
+String Configurator::getUserInput(String prompt) 
+{
+        //Clear the screen
+        Serial.print(newScreen);
+        //Prompt user for input
+        Serial.print(prompt);
+        //Wait for user input
+        String input;
+        while(input.indexOf("\r\n") < 0) {
+            input += Serial.read();
+        }
+
 }
 
 
@@ -177,6 +196,7 @@ void Configurator::distanceMenuHandler(int select)
     switch(select) {
     //Near
     case 1:
+
 
         break;
     //Mid

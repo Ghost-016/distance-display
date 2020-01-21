@@ -30,6 +30,7 @@ private:
     enum pageLayout { Main, Distance, Upload, MQTT, LED };
     pageLayout currentPage;
 
+    String getUserInput(String prompt);
     void displayMenu(enum pageLayout page);
     void menuDecode(int select);
     void mainMenuHandler(int select);
