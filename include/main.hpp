@@ -45,6 +45,7 @@ struct user_vars
   char lwt_status_disconnected[32] =  "disconnected" ;
   char lwt_status_running[32] =  "connected" ;
   uint8_t LEDbrightness = 50;
+  int LEDtimeout = 30;
 };
 
 #endif  //MAIN_HPP

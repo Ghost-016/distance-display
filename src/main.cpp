@@ -52,6 +52,7 @@ SOFTWARE.
 #include <LEDring.hpp>
 
 #include "main.hpp"
+#include "configStateMachine.hpp"
 
 
 //===================================
