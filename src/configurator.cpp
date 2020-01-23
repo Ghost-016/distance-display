@@ -91,7 +91,7 @@ void Configurator::service()
         //Look right in front of EoL and execute command
         int selection = (int)command[0] - 48;
         command.clear();
-        //Decode what menu we're one and what we should do with the input
+        //Decode what menu we're on and what we should do with the input
         menuDecode(selection);
     }
     
@@ -102,16 +102,19 @@ void Configurator::service()
 */
 String Configurator::getUserInput(String prompt) 
 {
-        //Clear the screen
-        Serial.print(newScreen);
-        //Prompt user for input
-        Serial.print(prompt);
-        //Wait for user input
-        String input;
-        while(input.indexOf("\r\n") < 0) {
-            input += Serial.read();
-        }
+    //Clear the screen
+    Serial.print(newScreen);
+    //Prompt user for input
+    Serial.print(prompt);
+    //Wait for user input
+    String input;
+    while(input.indexOf("\r\n") < 0) {
+        input += Serial.read();
+    }
+    //Remove the EoL
+    input.remove(input.length() - 2, 2);
 
+    return (input);
 }
 
 
