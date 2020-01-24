@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/*
+    Move external menu states to internal.
+    Have an external transition that triggers internal transistions based on input data
+*/
+
 #include <stdint.h>
 #include <string>
 #include <StateMachine.h>
@@ -33,18 +38,18 @@ SOFTWARE.
 
 const char newScreen = 12;
 
-const static String mainMenu = {   "[1]: Distances\r\n \
+const static String s_mainMenu = {   "[1]: Distances\r\n \
                                     [2]: MQTT\r\n \
                                     [3]: LED\r\n \
                                     [4]: Upload\r\n" };
 
-const static String distanceMenu = { "[1]: Near\r\n \
+const static String s_distanceMenu = { "[1]: Near\r\n \
                                       [2]: Mid\r\n \
                                       [3]: Far\r\n \
                                       [4]: Sensitivity:\r\n \
                                       [0]: Back\r\n" };
 
-const static String MQTTMenu = { "[1]: Server address\r\n \
+const static String s_MQTTMenu = { "[1]: Server address\r\n \
                                   [2]: Client name\r\n \
                                   [3]: Distance topic\r\n \
                                   [4]: LWT topic\r\n \
@@ -52,10 +57,10 @@ const static String MQTTMenu = { "[1]: Server address\r\n \
                                   [6]: LWT connected message\r\n \
                                   [0]: Back\r\n" };
 
-const static String LEDMenu = { "[1]: Brightness\r\n \
+const static String s_LEDMenu = { "[1]: Brightness\r\n \
                                  [0]: Back\r\n" };
 
-const static String uploadMenu = { "[1]: Username\r\n \
+const static String s_uploadMenu = { "[1]: Username\r\n \
                                     [2]: Password\r\n \
                                     [0]: Back" };
 
@@ -130,30 +135,35 @@ STATE_DEFINE(ConfigMachine, MainMenu, ConfigData)
 {
     Serial.print(newScreen);
     Serial.println("ConfigMachine::MainMenu");
+    Serial.print(s_mainMenu);
 }
 
 STATE_DEFINE(ConfigMachine, Distance, ConfigData)
 {
     Serial.print(newScreen);
     Serial.println("ConfigMachine::DistanceMenu");
+    Serial.print(s_distanceMenu);
 }
 
 STATE_DEFINE(ConfigMachine, Upload, ConfigData)
 {
     Serial.print(newScreen);
     Serial.println("ConfigMachine::UploadMenu");
+    Serial.print(s_uploadMenu);
 }
 
 STATE_DEFINE(ConfigMachine, Mqtt, ConfigData)
 {
     Serial.print(newScreen);
     Serial.println("ConfigMachine::MQTTMenu");
+    Serial.print(s_MQTTMenu);
 }
 
 STATE_DEFINE(ConfigMachine, Led, ConfigData)
 {
     Serial.print(newScreen);
     Serial.println("ConfigMachine::LEDMenu");
+    Serial.print(s_LEDMenu);
 }
 
 STATE_DEFINE(ConfigMachine, User_Input, ConfigData)

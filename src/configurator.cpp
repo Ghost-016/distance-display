@@ -31,8 +31,14 @@ SOFTWARE.
     A \r\n from client on configuring an options takes the defualt
 
     During user input, block waiting on serial data in
+
+    To traverse the menus while not blocking,
+        build up a command string that is reset when:
+            the end of the menu is reached and executed
+            user starts backing out of nested menus
 */
 
+#include <Arduino.h>
 #include "HardwareSerial.h"
 #include <stdint.h>
 #include <string>
@@ -99,6 +105,7 @@ void Configurator::service()
 
 /*
     Blocking function
+    possibly overload for different return types?
 */
 String Configurator::getUserInput(String prompt) 
 {
@@ -110,6 +117,8 @@ String Configurator::getUserInput(String prompt)
     String input;
     while(input.indexOf("\r\n") < 0) {
         input += Serial.read();
+        //yield so the watchdog doesnt kill us
+        yield();
     }
     //Remove the EoL
     input.remove(input.length() - 2, 2);
@@ -174,45 +183,56 @@ void Configurator::menuDecode(int select)
 
 void Configurator::mainMenuHandler(int select)
 {
+    //set current page and print to serial
     switch (select)
     {
     case Distance:
-        distanceMenuHandler(select);
+        currentPage = Distance;
         break;
     case MQTT:
-        MQTTMenuHandler(select);
+        currentPage = MQTT;
         break;
     case LED:
-        LEDMenuHandler(select);
+        currentPage = LED;
         break;
     case Upload:
-        uploadMenuHandler(select);
+        currentPage = Upload;
         break;
     
     default:
         break;
     }
+
+    displayMenu(currentPage);
 }
 
 void Configurator::distanceMenuHandler(int select)
 {
+    String result;
+    float f_result;
+
     switch(select) {
     //Near
     case 1:
+        result = getUserInput("Near distance: ");
+        if(result.toFloat() != 0) {
+            setNearDistance(result.toFloat());
+        }
+        else {
 
-
+        }
         break;
     //Mid
     case 2:
-
+        getUserInput("Midrange distance: ");
         break;
     //Far
     case 3:
-
+        getUserInput("Far distance: ");
         break;
     //Sensitivity
     case 4:
-
+        getUserInput("Sensitivity(cm): ");
         break;
     //Back
     case 0:
