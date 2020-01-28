@@ -52,7 +52,7 @@ SOFTWARE.
 #include <LEDring.hpp>
 
 #include "main.hpp"
-#include "configStateMachine.hpp"
+#include "configurator.hpp"
 
 
 //===================================
@@ -60,7 +60,7 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 1
+#define WIFI_ENABLED 0
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
@@ -127,6 +127,9 @@ os_timer_t SysTick; //Technically just a type but...its special
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
+//Config
+Configurator config;
+
 
 //===================================
 //  Prototypes
@@ -172,6 +175,9 @@ void SysTickHandler(void *pArg)
 void setup() {
   //Start EEPROM with 512 bytes
   EEPROM.begin(512);
+
+  //Start configurator, uses Serial
+  config.begin();
 
   //NeoPixel init
   ring.begin();
@@ -233,6 +239,9 @@ void loop() {
     }
     //update LEDs regularly
     ring.update();
+
+    //service the configurator at the same rate as the LEDs
+    config.service();
   }
 #endif  //#if LED_ENABLED
 

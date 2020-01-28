@@ -27,7 +27,7 @@ SOFTWARE.
 
 class Configurator {
 private:
-    enum pageLayout { Main, Distance, Upload, MQTT, LED };
+    enum pageLayout { Main, Distance, MQTT, LED, Upload };
     pageLayout currentPage;
 
     String getUserInput(String prompt);

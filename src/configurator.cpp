@@ -47,31 +47,36 @@ SOFTWARE.
 
 const char newScreen = 12;
 
-const static String mainMenu = {   "[1]: Distances\r\n \
-                                    [2]: MQTT\r\n \
-                                    [3]: LED\r\n \
-                                    [4]: Upload\r\n" };
+const static String mainMenu = {   "\r\n\
+[1]: Distances\r\n\
+[2]: MQTT\r\n\
+[3]: LED\r\n\
+[4]: Upload\r\n" };
 
-const static String distanceMenu = { "[1]: Near\r\n \
-                                      [2]: Mid\r\n \
-                                      [3]: Far\r\n \
-                                      [4]: Sensitivity:\r\n \
-                                      [0]: Back\r\n" };
+const static String distanceMenu = { "\r\n\
+[1]: Near\r\n\
+[2]: Mid\r\n\
+[3]: Far\r\n\
+[4]: Sensitivity:\r\n\
+[0]: Back\r\n" };
 
-const static String MQTTMenu = { "[1]: Server address\r\n \
-                                  [2]: Client name\r\n \
-                                  [3]: Distance topic\r\n \
-                                  [4]: LWT topic\r\n \
-                                  [5]: LWT disconnected message\r\n \
-                                  [6]: LWT connected message\r\n \
-                                  [0]: Back\r\n" };
+const static String MQTTMenu = { "\r\n\
+[1]: Server address\r\n\
+[2]: Client name\r\n\
+[3]: Distance topic\r\n\
+[4]: LWT topic\r\n\
+[5]: LWT disconnected message\r\n\
+[6]: LWT connected message\r\n\
+[0]: Back\r\n" };
 
-const static String LEDMenu = { "[1]: Brightness\r\n \
-                                 [0]: Back\r\n" };
+const static String LEDMenu = { "\r\n\
+[1]: Brightness\r\n\
+[0]: Back\r\n" };
 
-const static String uploadMenu = { "[1]: Username\r\n \
-                                    [2]: Password\r\n \
-                                    [0]: Back" };
+const static String uploadMenu = { "\r\n\
+[1]: Username\r\n\
+[2]: Password\r\n\
+[0]: Back" };
 
 
 String command = { "" };
@@ -88,12 +93,13 @@ void Configurator::begin()
 
 void Configurator::service()
 {
-    while(Serial.peek() > 0) {
-        command += Serial.read();
+    while(Serial.available()) {
+        char c = Serial.read();
+        command += c;
     }
 
     //Find \r\n
-    if(command.indexOf("\r\n") > 0) {
+    if((command.indexOf("\r\n") > 0) || (command.indexOf("\n\r") > 0)) {
         //Look right in front of EoL and execute command
         int selection = (int)command[0] - 48;
         command.clear();
@@ -105,7 +111,6 @@ void Configurator::service()
 
 /*
     Blocking function
-    possibly overload for different return types?
 */
 String Configurator::getUserInput(String prompt) 
 {
@@ -116,7 +121,10 @@ String Configurator::getUserInput(String prompt)
     //Wait for user input
     String input;
     while(input.indexOf("\r\n") < 0) {
-        input += Serial.read();
+        if(Serial.available()) {
+            char c = Serial.read();
+            input += c;
+        }
         //yield so the watchdog doesnt kill us
         yield();
     }
@@ -209,7 +217,6 @@ void Configurator::mainMenuHandler(int select)
 void Configurator::distanceMenuHandler(int select)
 {
     String result;
-    float f_result;
 
     switch(select) {
     //Near
@@ -224,21 +231,33 @@ void Configurator::distanceMenuHandler(int select)
         break;
     //Mid
     case 2:
-        getUserInput("Midrange distance: ");
+        result = getUserInput("Midrange distance: ");
+        if(result.toFloat() != 0) {
+            setMidDistance(result.toFloat());
+        }
         break;
     //Far
     case 3:
-        getUserInput("Far distance: ");
+        result = getUserInput("Far distance: ");
+        if(result.toFloat() != 0) {
+            setFarDistance(result.toFloat());
+        }
         break;
     //Sensitivity
     case 4:
-        getUserInput("Sensitivity(cm): ");
+        result = getUserInput("Sensitivity(cm): ");
+        if(result.toFloat() != 0) {
+            setHystDistance(result.toFloat());
+        }
         break;
     //Back
     case 0:
         currentPage = Main;
         break;
     };
+
+    //Return back to previous menu
+    displayMenu(currentPage);
 }
 
 void Configurator::uploadMenuHandler(int select)
@@ -254,6 +273,9 @@ void Configurator::uploadMenuHandler(int select)
         currentPage = Main;
         break;
     };
+
+    //Return back to previous menu
+    displayMenu(currentPage);
 }
 
 void Configurator::MQTTMenuHandler(int select)
@@ -281,18 +303,24 @@ void Configurator::MQTTMenuHandler(int select)
         currentPage = Main;
         break;
     };
+
+    //Return back to previous menu
+    displayMenu(currentPage);
 }
 
 void Configurator::LEDMenuHandler(int select)
 {
     switch(select){
-    case 1:
+    case 1: //Brightness
 
         break;
     case 0:
         currentPage = Main;
         break;
     };
+
+    //Return back to previous menu
+    displayMenu(currentPage);
 }
 
 void Configurator::setFarDistance(float distance)
@@ -308,7 +336,7 @@ void Configurator::setMidDistance(float distance)
 
 void Configurator::setNearDistance(float distance)
 {
-
+    Serial.printf("\r\nConfigurator::setNearDistance\r\nSet to %2.2f.\r\n", distance);
 }
 
 void Configurator::setHystDistance(float distance)
