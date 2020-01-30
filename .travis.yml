@@ -11,7 +11,11 @@ cache:
 install:
     - pip install -U platformio
     - platformio update
-    - platformio lib -g install 1
+    - platformio lib -g install Adafruit NeoPixel
+    - platformio lib -g install PubSubClient
+    - platformio lib -g install HCSR04
+    - platformio lib -g install NTPClient
+    - platformio lib -g install WifiManager
 
 script:
     - platformio run -e d1_mini
