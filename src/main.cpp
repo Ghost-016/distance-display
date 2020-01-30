@@ -56,7 +56,7 @@ SOFTWARE.
 //===================================
 #define LED_ENABLED  1
 #define WIFI_ENABLED 1
-#define MQTT_ENABLED  (0 & WIFI_ENABLED)
+#define MQTT_ENABLED  (1 & WIFI_ENABLED)
 
 
 const int BAUD_SERIAL = 115200;
@@ -64,10 +64,10 @@ const int BAUD_SERIAL = 115200;
 #if MQTT_ENABLED
 const char mqtt_server[] = { "192.168.2.103" };
 
-const char MQTT_CLIENT_NAME[] = { "ESP8266_GARAGE" };
+const char MQTT_CLIENT_NAME[] = { "ESP8266_PARK_SENSE" };
 
-const char distance_topic[] = { "sensor/garage/distance" };
-const char lwt_topic[] =      { "sensor/garage/status" };
+const char distance_topic[] = { "sensor/garage/challenger/distance" };
+const char lwt_topic[] =      { "sensor/garage/challenger/status" };
 #endif  //#if MQTT_ENABLED
 
 const int ULTRASONIC_TRIGGER = D3;
@@ -102,8 +102,8 @@ float distance = 0.00;
 float prevdistance = 0.00;
 //distance bounds (to be made configurable at runtime)
 float farDistance = 200.0;
-float midDistance = 75.0;
-float nearDistance = 40.0;
+float midDistance = 125.0;
+float nearDistance = 62.0;
 float hystDistance = 5.0;
 
 
