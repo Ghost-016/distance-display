@@ -188,7 +188,7 @@ void setup() {
 #endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
-  client.setServer(uvars.MQTT_server, 1883);
+  client.setServer(config.uvars.MQTT_server, 1883);
 #endif  //#if MQTT_ENABLED
 
   //SysTick init
@@ -255,7 +255,7 @@ void loop() {
       prevdistance = distance;
 #if MQTT_ENABLED
       if(client.connected()) {
-        client.publish(uvars.distance_topic, String(distance).c_str(), true);
+        client.publish(config.uvars.distance_topic, String(distance).c_str(), true);
       }
 #endif  //#if MQTT_ENABLED
       LEDenabled = true;
@@ -306,7 +306,7 @@ void setup_wifi()
   //Web updater server
   MDNS.begin(host);
 
-  httpUpdater.setup(&httpServer, update_path, uvars.upload_user, uvars.upload_pwrd);
+  httpUpdater.setup(&httpServer, update_path, config.uvars.upload_user, config.uvars.upload_pwrd);
   httpServer.begin();
 
   MDNS.addService("http", "tcp", 80);
@@ -323,7 +323,7 @@ void reconnect()
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
-      if (client.connect(uvars.MQTT_client_name, uvars.lwt_topic, 2, true, uvars.lwt_status_disconnected)) {
+      if (client.connect(config.uvars.MQTT_client_name, config.uvars.lwt_topic, 2, true, config.uvars.lwt_status_disconnected)) {
         //Serial.println("connected");
         lastReconnectAttempt = 0;
       }
@@ -337,16 +337,6 @@ void reconnect()
     }
   }
   //Connected, update LWT topic
-  client.publish(uvars.lwt_topic, uvars.lwt_status_running);
+  client.publish(config.uvars.lwt_topic, config.uvars.lwt_status_running);
 }
 #endif  //#if MQTT_ENABLED
-
-bool EEPROM_valid()
-{
-  if(EEPROM.read(0) == 0xFF) {
-    return false;
-  }
-  else {
-    return true;
-  }
-}
