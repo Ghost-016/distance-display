@@ -47,6 +47,7 @@ SOFTWARE.
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
+
 #include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 
@@ -62,8 +63,9 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 0
-#define MQTT_ENABLED  (0 & WIFI_ENABLED)
+#define WIFI_ENABLED 1
+#define MQTT_ENABLED  (1 & WIFI_ENABLED)
+
 
 
 //===================================
@@ -101,8 +103,6 @@ long lastEpochTime = 0;
 float distance = 0.00;
 float prevdistance = 0.00;
 
-//struct user_vars uvars;
-
 
 
 //===================================
@@ -131,7 +131,6 @@ ESP8266HTTPUpdateServer httpUpdater;
 
 //Config
 Configurator config;
-
 
 //===================================
 //  Prototypes
