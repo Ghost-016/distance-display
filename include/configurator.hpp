@@ -74,7 +74,9 @@ private:
     pageLayout currentPage;
     
 
-    String getUserInput(String prompt);
+    String getUserInput(String prompt, String defVal);
+    String getUserInput(String prompt, float defVal);
+    String getUserInput(String prompt, int defVal);
     void displayMenu(enum pageLayout page);
     void menuDecode(int select);
     void mainMenuHandler(int select);
@@ -83,6 +85,8 @@ private:
     void MQTTMenuHandler(int select);
     void LEDMenuHandler(int select);
     void SaveMenuHandler(int select);
+    void dumpEEPROM();
+    bool readEEPROMversion();
     void setFarDistance(float distance);
     void setMidDistance(float distance);
     void setNearDistance(float distance);

@@ -97,7 +97,9 @@ void Configurator::begin()
     //Initialize EEPROM with 512 bytes
     EEPROM.begin(512);
     //Read from EEPROM and verify if the data is valid
-    EEPROM_readAnything(0, uvars);
+    if(readEEPROMversion()) {
+        EEPROM_readAnything(0, uvars);
+    }
 }
 
 
@@ -131,12 +133,66 @@ void Configurator::service()
 /*
     Blocking function
 */
-String Configurator::getUserInput(String prompt) 
+String Configurator::getUserInput(String prompt, String defVal) 
 {
     //Clear the screen
     Serial.print(newScreen);
     //Prompt user for input
-    Serial.print(prompt);
+    Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
+    //Wait for user input
+    String input;
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+        if(Serial.available()) {
+            char c = Serial.read();
+            input += c;
+            Serial.print(c);
+        }
+        //yield so the watchdog doesnt kill us
+        yield();
+    }
+    //Remove the EoL
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
+
+    return (input);
+}
+
+/*
+    Blocking function
+*/
+String Configurator::getUserInput(String prompt, float defVal) 
+{
+    //Clear the screen
+    Serial.print(newScreen);
+    //Prompt user for input
+    Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
+    //Wait for user input
+    String input;
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+        if(Serial.available()) {
+            char c = Serial.read();
+            input += c;
+            Serial.print(c);
+        }
+        //yield so the watchdog doesnt kill us
+        yield();
+    }
+    //Remove the EoL
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
+
+    return (input);
+}
+
+/*
+    Blocking function
+*/
+String Configurator::getUserInput(String prompt, int defVal) 
+{
+    //Clear the screen
+    Serial.print(newScreen);
+    //Prompt user for input
+    Serial.printf("%s (%u): ", prompt.c_str(), defVal);
     //Wait for user input
     String input;
     while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
@@ -247,11 +303,12 @@ void Configurator::mainMenuHandler(int select)
 void Configurator::distanceMenuHandler(int select)
 {
     String result;
+    String defVal;
 
     switch(select) {
     //Near
     case 1:
-        result = getUserInput("Near distance: ");
+        result = getUserInput("Near distance", uvars.nearDistance);
         if(result.toFloat() != 0) {
             setNearDistance(result.toFloat());
         }
@@ -261,21 +318,21 @@ void Configurator::distanceMenuHandler(int select)
         break;
     //Mid
     case 2:
-        result = getUserInput("Midrange distance: ");
+        result = getUserInput("Midrange distance", uvars.midDistance);
         if(result.toFloat() != 0) {
             setMidDistance(result.toFloat());
         }
         break;
     //Far
     case 3:
-        result = getUserInput("Far distance: ");
+        result = getUserInput("Far distance", uvars.farDistance);
         if(result.toFloat() != 0) {
             setFarDistance(result.toFloat());
         }
         break;
     //Sensitivity
     case 4:
-        result = getUserInput("Sensitivity(cm): ");
+        result = getUserInput("Sensitivity(cm)", uvars.hystDistance);
         if(result.toFloat() != 0) {
             setHystDistance(result.toFloat());
         }
@@ -295,14 +352,14 @@ void Configurator::uploadMenuHandler(int select)
     String result = {""};
     switch(select){
     case 1: //Username
-        result = getUserInput("Upload username: ");
-        if(result.length > 0) {
+        result = getUserInput("Upload username", uvars.upload_user);
+        if(result.length() > 0) {
             setUploadUName(result.c_str());
         }
         break;
     case 2: //Password
-        result = getUserInput("Upload password: ");
-        if(result.length > 0) {
+        result = getUserInput("Upload password", uvars.upload_pwrd);
+        if(result.length() > 0) {
             setUploadPWord(result.c_str());
         }
         break;
@@ -321,38 +378,38 @@ void Configurator::MQTTMenuHandler(int select)
 
     switch(select){
     case 1: //Server address
-        result = getUserInput("MQTT Server IP address: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Server IP address", uvars.MQTT_server);
+        if(result.length() > 0) {
             setMQTTServer(result.c_str());
         }
         break;
     case 2: //Client name
-        result = getUserInput("MQTT Client name: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Client name", uvars.MQTT_client_name);
+        if(result.length() > 0) {
             setMQTTClientName(result.c_str());
         }        
         break;
     case 3: //Distance topic
-        result = getUserInput("MQTT Distance topic: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Distance topic", uvars.distance_topic);
+        if(result.length() > 0) {
             setDistanceTopic(result.c_str());
         } 
         break;
     case 4: //LWT topic
-        result = getUserInput("MQTT Last Will topic: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Last Will topic", uvars.lwt_topic);
+        if(result.length() > 0) {
             setLWTtopic(result.c_str());
         } 
         break;
     case 5: //LWT disconnected message
-        result = getUserInput("MQTT Last Will disconnected message: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Last Will disconnected message", uvars.lwt_status_disconnected);
+        if(result.length() > 0) {
             setLWTdisconnectedStatus(result.c_str());
         } 
         break;
     case 6: //LWT connected message
-        result = getUserInput("MQTT Last Will connected message: ");
-        if(result.length > 0) {
+        result = getUserInput("MQTT Last Will connected message", uvars.lwt_status_running);
+        if(result.length() > 0) {
             setLWTconnectedStatus(result.c_str());
         } 
         break;
@@ -368,12 +425,19 @@ void Configurator::MQTTMenuHandler(int select)
 void Configurator::LEDMenuHandler(int select)
 {
     String result = {""};
+    String defVal;
 
     switch(select){
     case 1: //Brightness
-        result = getUserInput("LED brightness (1-255): ");
+        result = getUserInput("LED brightness (1-255)", (int)uvars.LEDbrightness);
         if(result.toInt() > 0) {
             setLEDbrightness(result.toInt());
+        }
+        break;
+    case 2: //Timeout
+        result = getUserInput("LED Timeout (s)", uvars.LEDtimeout);
+        if(result.toInt() > 0) {
+            //setLEDbrightness(result.toInt());
         }
         break;
     case 0:
@@ -393,6 +457,7 @@ void Configurator::SaveMenuHandler(int select)
     case 1:
         //Save uvars to EEPROM
         bytesWritten = EEPROM_writeAnything(0, uvars);
+        EEPROM.commit();
         Serial.printf("Wrote %u bytes to EEPROM.\r\n", bytesWritten);
         break;
     case 0:
@@ -405,6 +470,41 @@ void Configurator::SaveMenuHandler(int select)
 
     //Return back to previous menu
     displayMenu(currentPage);
+}
+
+void Configurator::dumpEEPROM()
+{
+    struct user_vars test_vars;
+    EEPROM_readAnything(0, test_vars);
+    Serial.printf("\
+    version: %u\r\n\
+    farDistance: %3.2f\r\n\
+    midDistance: %3.2f\r\n\
+    nearDistance: %3.2f\r\n\
+    hystDistance: %3.2f\r\n\
+    upload_user: %s\r\n\
+    upload_pwrd: %s\r\n\
+    MQTT_server: %s\r\n\
+    MQTT_client_name: %s\r\n\
+    distance_topic: %s\r\n\
+    lwt_topic: %s\r\n\
+    lwt_status_disconnected: %s\r\n\
+    lwt_status_running: %s\r\n\
+    LEDbrightness: %u\r\n\
+    LEDtimeout: %u\r\n",
+    test_vars.version, test_vars.farDistance, test_vars.midDistance, test_vars.nearDistance, test_vars.hystDistance, test_vars.upload_user, test_vars.upload_pwrd,
+    test_vars.MQTT_server, test_vars.MQTT_client_name, test_vars.distance_topic, test_vars.lwt_topic, test_vars.lwt_status_disconnected, test_vars.lwt_status_running,
+    test_vars.LEDbrightness, test_vars.LEDtimeout);
+}
+
+bool Configurator::readEEPROMversion()
+{
+    int eepromVersion;
+    EEPROM_readAnything(0, eepromVersion);
+    if(eepromVersion != 1)
+        return false;
+    else
+        return true;
 }
 
 void Configurator::setFarDistance(float distance)
