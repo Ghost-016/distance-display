@@ -72,7 +72,7 @@ class Configurator {
 private:
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
     pageLayout currentPage;
-    struct user_vars uvars;
+    
 
     String getUserInput(String prompt);
     void displayMenu(enum pageLayout page);
@@ -97,6 +97,8 @@ private:
     void setLWTconnectedStatus(std::string cStatus);
     void setLEDbrightness(uint8_t brightness);
 public:
+    struct user_vars uvars;
+
     void begin();
     void service();
 };

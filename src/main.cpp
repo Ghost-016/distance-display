@@ -28,6 +28,8 @@ SOFTWARE.
   TODO: Add runtime configuration for HTTP updater username and password
   TODO: Add runtime configuration for distances
   TODO: Add runtime configuration for LED brightness
+  TODOL Add runtime configuration for LED timeout
+  TODO: Add runtime option to reset wifi
 */
 #ifndef UNIT_TEST
 
@@ -99,7 +101,7 @@ long lastEpochTime = 0;
 float distance = 0.00;
 float prevdistance = 0.00;
 
-struct user_vars uvars;
+//struct user_vars uvars;
 
 
 
@@ -224,13 +226,13 @@ void loop() {
 
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
-      if ((distance > uvars.farDistance) || (distance < 0)) {
+      if ((distance > config.uvars.farDistance) || (distance < 0)) {
         ring.setGreen();
       }
-      else if ((distance < uvars.midDistance) && (distance > (uvars.nearDistance + uvars.hystDistance))) {
+      else if ((distance < config.uvars.midDistance) && (distance > (config.uvars.nearDistance + config.uvars.hystDistance))) {
         ring.setYellow();
       }
-      else if ((distance < uvars.nearDistance) && (distance > 0.0)) {
+      else if ((distance < config.uvars.nearDistance) && (distance > 0.0)) {
         ring.setRed();
       }
     }

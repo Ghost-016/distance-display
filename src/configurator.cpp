@@ -96,6 +96,8 @@ void Configurator::begin()
     displayMenu(currentPage);
     //Initialize EEPROM with 512 bytes
     EEPROM.begin(512);
+    //Read from EEPROM and verify if the data is valid
+    EEPROM_readAnything(0, uvars);
 }
 
 
@@ -290,12 +292,19 @@ void Configurator::distanceMenuHandler(int select)
 
 void Configurator::uploadMenuHandler(int select)
 {
+    String result = {""};
     switch(select){
     case 1: //Username
-
+        result = getUserInput("Upload username: ");
+        if(result.length > 0) {
+            setUploadUName(result.c_str());
+        }
         break;
     case 2: //Password
-
+        result = getUserInput("Upload password: ");
+        if(result.length > 0) {
+            setUploadPWord(result.c_str());
+        }
         break;
     case 0:
         currentPage = Main;
@@ -308,24 +317,44 @@ void Configurator::uploadMenuHandler(int select)
 
 void Configurator::MQTTMenuHandler(int select)
 {
+    String result = {""};
+
     switch(select){
     case 1: //Server address
-
+        result = getUserInput("MQTT Server IP address: ");
+        if(result.length > 0) {
+            setMQTTServer(result.c_str());
+        }
         break;
     case 2: //Client name
-
+        result = getUserInput("MQTT Client name: ");
+        if(result.length > 0) {
+            setMQTTClientName(result.c_str());
+        }        
         break;
     case 3: //Distance topic
-
+        result = getUserInput("MQTT Distance topic: ");
+        if(result.length > 0) {
+            setDistanceTopic(result.c_str());
+        } 
         break;
     case 4: //LWT topic
-
+        result = getUserInput("MQTT Last Will topic: ");
+        if(result.length > 0) {
+            setLWTtopic(result.c_str());
+        } 
         break;
     case 5: //LWT disconnected message
-
+        result = getUserInput("MQTT Last Will disconnected message: ");
+        if(result.length > 0) {
+            setLWTdisconnectedStatus(result.c_str());
+        } 
         break;
     case 6: //LWT connected message
-
+        result = getUserInput("MQTT Last Will connected message: ");
+        if(result.length > 0) {
+            setLWTconnectedStatus(result.c_str());
+        } 
         break;
     case 0:
         currentPage = Main;
@@ -338,9 +367,14 @@ void Configurator::MQTTMenuHandler(int select)
 
 void Configurator::LEDMenuHandler(int select)
 {
+    String result = {""};
+
     switch(select){
     case 1: //Brightness
-
+        result = getUserInput("LED brightness (1-255): ");
+        if(result.toInt() > 0) {
+            setLEDbrightness(result.toInt());
+        }
         break;
     case 0:
         currentPage = Main;
