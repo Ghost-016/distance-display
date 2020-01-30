@@ -28,6 +28,8 @@ SOFTWARE.
   TODO: Add runtime configuration for HTTP updater username and password
   TODO: Add runtime configuration for distances
   TODO: Add runtime configuration for LED brightness
+  TODOL Add runtime configuration for LED timeout
+  TODO: Add runtime option to reset wifi
 */
 #ifndef UNIT_TEST
 
@@ -45,30 +47,32 @@ SOFTWARE.
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
+
+#include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 
 //Private librarys
 #include <LEDring.hpp>
 
+#include "main.hpp"
+#include "configurator.hpp"
+
 
 //===================================
-//  Defines/Constants
+//  Configuration
 //===================================
+
 #define LED_ENABLED  1
 #define WIFI_ENABLED 1
 #define MQTT_ENABLED  (1 & WIFI_ENABLED)
 
 
+
+//===================================
+//  Constants
+//===================================
+
 const int BAUD_SERIAL = 115200;
-
-#if MQTT_ENABLED
-const char mqtt_server[] = { "192.168.2.103" };
-
-const char MQTT_CLIENT_NAME[] = { "ESP8266_PARK_SENSE" };
-
-const char distance_topic[] = { "sensor/garage/challenger/distance" };
-const char lwt_topic[] =      { "sensor/garage/challenger/status" };
-#endif  //#if MQTT_ENABLED
 
 const int ULTRASONIC_TRIGGER = D3;
 const int ULTRASONIC_ECHO = D2;
@@ -81,8 +85,6 @@ const int LEDTIMEOUT = 30;
 //Web updater
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
-const char* update_username = "admin";
-const char* update_password = "admin";
 
 
 //===================================
@@ -100,11 +102,7 @@ long lastEpochTime = 0;
 //distance
 float distance = 0.00;
 float prevdistance = 0.00;
-//distance bounds (to be made configurable at runtime)
-float farDistance = 200.0;
-float midDistance = 125.0;
-float nearDistance = 62.0;
-float hystDistance = 5.0;
+
 
 
 //===================================
@@ -131,6 +129,8 @@ os_timer_t SysTick; //Technically just a type but...its special
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
+//Config
+Configurator config;
 
 //===================================
 //  Prototypes
@@ -174,8 +174,11 @@ void SysTickHandler(void *pArg)
 //  Setup
 //===================================
 void setup() {
-  
-  Serial.begin(BAUD_SERIAL);
+  //Start EEPROM with 512 bytes
+  EEPROM.begin(512);
+
+  //Start configurator, uses Serial
+  config.begin();
 
   //NeoPixel init
   ring.begin();
@@ -185,7 +188,7 @@ void setup() {
 #endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
-  client.setServer(mqtt_server, 1883);
+  client.setServer(uvars.MQTT_server, 1883);
 #endif  //#if MQTT_ENABLED
 
   //SysTick init
@@ -222,13 +225,13 @@ void loop() {
 
     if(!isnan(distance) && (LEDenabled == true)) {
       //Call LED function
-      if ((distance > farDistance) || (distance < 0)) {
+      if ((distance > config.uvars.farDistance) || (distance < 0)) {
         ring.setGreen();
       }
-      else if ((distance < midDistance) && (distance > (nearDistance + hystDistance))) {
+      else if ((distance < config.uvars.midDistance) && (distance > (config.uvars.nearDistance + config.uvars.hystDistance))) {
         ring.setYellow();
       }
-      else if ((distance < nearDistance) && (distance > 0.0)) {
+      else if ((distance < config.uvars.nearDistance) && (distance > 0.0)) {
         ring.setRed();
       }
     }
@@ -237,6 +240,9 @@ void loop() {
     }
     //update LEDs regularly
     ring.update();
+
+    //service the configurator at the same rate as the LEDs
+    config.service();
   }
 #endif  //#if LED_ENABLED
 
@@ -249,7 +255,7 @@ void loop() {
       prevdistance = distance;
 #if MQTT_ENABLED
       if(client.connected()) {
-        client.publish(distance_topic, String(distance).c_str(), true);
+        client.publish(uvars.distance_topic, String(distance).c_str(), true);
       }
 #endif  //#if MQTT_ENABLED
       LEDenabled = true;
@@ -300,7 +306,7 @@ void setup_wifi()
   //Web updater server
   MDNS.begin(host);
 
-  httpUpdater.setup(&httpServer, update_path, update_username, update_password);
+  httpUpdater.setup(&httpServer, update_path, uvars.upload_user, uvars.upload_pwrd);
   httpServer.begin();
 
   MDNS.addService("http", "tcp", 80);
@@ -317,7 +323,7 @@ void reconnect()
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
-      if (client.connect(MQTT_CLIENT_NAME, lwt_topic, 2, true, "disconnected")) {
+      if (client.connect(uvars.MQTT_client_name, uvars.lwt_topic, 2, true, uvars.lwt_status_disconnected)) {
         //Serial.println("connected");
         lastReconnectAttempt = 0;
       }
@@ -331,6 +337,16 @@ void reconnect()
     }
   }
   //Connected, update LWT topic
-  client.publish(lwt_topic, "connected");
+  client.publish(uvars.lwt_topic, uvars.lwt_status_running);
 }
 #endif  //#if MQTT_ENABLED
+
+bool EEPROM_valid()
+{
+  if(EEPROM.read(0) == 0xFF) {
+    return false;
+  }
+  else {
+    return true;
+  }
+}
