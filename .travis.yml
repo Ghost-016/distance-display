@@ -11,7 +11,7 @@ cache:
 install:
     - pip install -U platformio
     - platformio update
-    - platformio lib -g install Adafruit NeoPixel
+    - platformio lib -g install 28 #Adafruit NeoPixel
     - platformio lib -g install PubSubClient
     - platformio lib -g install HCSR04
     - platformio lib -g install NTPClient
