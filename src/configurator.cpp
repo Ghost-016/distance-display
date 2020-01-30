@@ -42,25 +42,27 @@ SOFTWARE.
 #include "HardwareSerial.h"
 #include <stdint.h>
 #include <string>
+#include <EEPROM.h>
 #include "main.hpp"
 #include "configurator.hpp"
 
 const char newScreen = 12;
 
-const static String mainMenu = {   "\r\n\
+const static String mainMenu = {   "\
 [1]: Distances\r\n\
 [2]: MQTT\r\n\
 [3]: LED\r\n\
-[4]: Upload\r\n" };
+[4]: Upload\r\n\
+[5]: Save\r\n" };
 
-const static String distanceMenu = { "\r\n\
+const static String distanceMenu = { "\
 [1]: Near\r\n\
 [2]: Mid\r\n\
 [3]: Far\r\n\
 [4]: Sensitivity:\r\n\
 [0]: Back\r\n" };
 
-const static String MQTTMenu = { "\r\n\
+const static String MQTTMenu = { "\
 [1]: Server address\r\n\
 [2]: Client name\r\n\
 [3]: Distance topic\r\n\
@@ -69,14 +71,18 @@ const static String MQTTMenu = { "\r\n\
 [6]: LWT connected message\r\n\
 [0]: Back\r\n" };
 
-const static String LEDMenu = { "\r\n\
+const static String LEDMenu = { "\
 [1]: Brightness\r\n\
 [0]: Back\r\n" };
 
-const static String uploadMenu = { "\r\n\
+const static String uploadMenu = { "\
 [1]: Username\r\n\
 [2]: Password\r\n\
-[0]: Back" };
+[0]: Back\r\n" };
+
+const static String SaveMenu = { "\
+[1]: Save values\r\n\
+[0]: Back\r\n" };
 
 
 String command = { "" };
@@ -88,6 +94,8 @@ void Configurator::begin()
     //Set current page up
     currentPage = Main;
     displayMenu(currentPage);
+    //Initialize EEPROM with 512 bytes
+    EEPROM.begin(512);
 }
 
 
@@ -96,17 +104,26 @@ void Configurator::service()
     while(Serial.available()) {
         char c = Serial.read();
         command += c;
+        Serial.print(command);
     }
-
+#if 0
     //Find \r\n
-    if((command.indexOf("\r\n") > 0) || (command.indexOf("\n\r") > 0)) {
+    if((command.indexOf("\r\n") > 0) || (command.indexOf("\r") > 0)) {
         //Look right in front of EoL and execute command
         int selection = (int)command[0] - 48;
         command.clear();
         //Decode what menu we're on and what we should do with the input
         menuDecode(selection);
     }
-    
+#endif
+    if(command.length() > 0) {
+        //Convert from ASCII to int
+        int selection = (int)command[0] - 48;
+        //Clear the accumulation buffer
+        command.clear();
+        //Decode what menu to go to from user input
+        menuDecode(selection);
+    }
 }
 
 /*
@@ -120,16 +137,18 @@ String Configurator::getUserInput(String prompt)
     Serial.print(prompt);
     //Wait for user input
     String input;
-    while(input.indexOf("\r\n") < 0) {
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
         if(Serial.available()) {
             char c = Serial.read();
             input += c;
+            Serial.print(c);
         }
         //yield so the watchdog doesnt kill us
         yield();
     }
     //Remove the EoL
-    input.remove(input.length() - 2, 2);
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
 
     return (input);
 }
@@ -158,6 +177,9 @@ void Configurator::displayMenu(enum pageLayout page)
     case LED:
         Serial.print(LEDMenu);
         break;    
+    case Save:
+        Serial.print(SaveMenu);
+        break;
     default:
         Serial.print("displayMenu called with invalid option.\r\n");
         break;
@@ -183,6 +205,9 @@ void Configurator::menuDecode(int select)
     case LED:
         LEDMenuHandler(select);
         break;
+    case Save:
+        SaveMenuHandler(select);
+        break;
     
     default:
         break;
@@ -206,6 +231,9 @@ void Configurator::mainMenuHandler(int select)
     case Upload:
         currentPage = Upload;
         break;
+    case Save:
+        currentPage = Save;
+        break;
     
     default:
         break;
@@ -225,7 +253,7 @@ void Configurator::distanceMenuHandler(int select)
         if(result.toFloat() != 0) {
             setNearDistance(result.toFloat());
         }
-        else {
+        else {  //Use the defualt
 
         }
         break;
@@ -263,10 +291,10 @@ void Configurator::distanceMenuHandler(int select)
 void Configurator::uploadMenuHandler(int select)
 {
     switch(select){
-    case 1:
+    case 1: //Username
 
         break;
-    case 2:
+    case 2: //Password
 
         break;
     case 0:
@@ -281,22 +309,22 @@ void Configurator::uploadMenuHandler(int select)
 void Configurator::MQTTMenuHandler(int select)
 {
     switch(select){
-    case 1:
+    case 1: //Server address
 
         break;
-    case 2:
+    case 2: //Client name
 
         break;
-    case 3:
+    case 3: //Distance topic
 
         break;
-    case 4:
+    case 4: //LWT topic
 
         break;
-    case 5:
+    case 5: //LWT disconnected message
 
         break;
-    case 6:
+    case 6: //LWT connected message
 
         break;
     case 0:
@@ -323,68 +351,89 @@ void Configurator::LEDMenuHandler(int select)
     displayMenu(currentPage);
 }
 
-void Configurator::setFarDistance(float distance)
+void Configurator::SaveMenuHandler(int select)
 {
+    int bytesWritten = 0;
 
+    switch(select){
+    case 1:
+        //Save uvars to EEPROM
+        bytesWritten = EEPROM_writeAnything(0, uvars);
+        Serial.printf("Wrote %u bytes to EEPROM.\r\n", bytesWritten);
+        break;
+    case 0:
+        currentPage = Main;
+        break;
+    };
+
+    //delay so intermediate text can be read
+    delay(2000);
+
+    //Return back to previous menu
+    displayMenu(currentPage);
 }
 
+void Configurator::setFarDistance(float distance)
+{
+    uvars.farDistance = distance;
+}
 
 void Configurator::setMidDistance(float distance)
 {
-
+    uvars.midDistance = distance;
 }
 
 void Configurator::setNearDistance(float distance)
 {
-    Serial.printf("\r\nConfigurator::setNearDistance\r\nSet to %2.2f.\r\n", distance);
+    uvars.nearDistance = distance;    
 }
 
 void Configurator::setHystDistance(float distance)
 {
-
+    uvars.hystDistance = distance;
 }
 
 void Configurator::setUploadUName(std::string name)
 {
-
+    memcpy(uvars.upload_user, &name, name.length());
 }
 
 void Configurator::setUploadPWord(std::string word)
 {
-
+    memcpy(uvars.upload_pwrd, &word, word.length());
 }
 
 void Configurator::setMQTTServer(std::string server)
 {
-
+    memcpy(uvars.MQTT_server, &server, server.length());
 }
 
 void Configurator::setMQTTClientName(std::string clientName)
 {
-
+    memcpy(uvars.MQTT_client_name, &clientName, clientName.length());
 }
 
 void Configurator::setDistanceTopic(std::string topic)
 {
-
+    memcpy(uvars.distance_topic, &topic, topic.length());
 }
 
 void Configurator::setLWTtopic(std::string LWTtopic)
 {
-
+    memcpy(uvars.lwt_topic, &LWTtopic, LWTtopic.length());
 }
 
 void Configurator::setLWTdisconnectedStatus(std::string dStatus)
 {
-
+    memcpy(uvars.lwt_status_disconnected, &dStatus, dStatus.length());
 }
 
 void Configurator::setLWTconnectedStatus(std::string cStatus)
 {
-
+    memcpy(uvars.lwt_status_running, &cStatus, cStatus.length());
 }
 
 void Configurator::setLEDbrightness(uint8_t brightness)
 {
-
+    uvars.LEDbrightness = brightness;
 }
