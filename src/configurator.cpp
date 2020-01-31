@@ -36,17 +36,20 @@ SOFTWARE.
         build up a command string that is reset when:
             the end of the menu is reached and executed
             user starts backing out of nested menus
+
+    TODO: Make this independant of Serial
+    TODO: Use String instead of std::string
 */
 
 #include <Arduino.h>
-#include "HardwareSerial.h"
+#include <stdlib.h>
 #include <stdint.h>
 #include <string>
 #include <EEPROM.h>
 #include "main.hpp"
 #include "configurator.hpp"
 
-const char newScreen = 12;
+const static String newScreen = {"\f"};
 
 const static String mainMenu = {   "\
 [1]: Distances\r\n\
@@ -82,18 +85,22 @@ const static String uploadMenu = { "\
 
 const static String SaveMenu = { "\
 [1]: Save values\r\n\
+[2]: Dump EEPROM\r\n\
 [0]: Back\r\n" };
 
 
-String command = { "" };
+
 
 
 void Configurator::begin()
 {
-    Serial.begin(115200);
+    //Make sure input is blanked
+    command = {""};
+
     //Set current page up
     currentPage = Main;
     displayMenu(currentPage);
+
     //Initialize EEPROM with 512 bytes
     EEPROM.begin(512);
     //Read from EEPROM and verify if the data is valid
@@ -103,23 +110,11 @@ void Configurator::begin()
 }
 
 
-void Configurator::service()
+void Configurator::service(char input)
 {
-    while(Serial.available()) {
-        char c = Serial.read();
-        command += c;
-        Serial.print(command);
-    }
-#if 0
-    //Find \r\n
-    if((command.indexOf("\r\n") > 0) || (command.indexOf("\r") > 0)) {
-        //Look right in front of EoL and execute command
-        int selection = (int)command[0] - 48;
-        command.clear();
-        //Decode what menu we're on and what we should do with the input
-        menuDecode(selection);
-    }
-#endif
+    //Accumulate input from user
+    command += input;
+
     if(command.length() > 0) {
         //Convert from ASCII to int
         int selection = (int)command[0] - 48;
@@ -136,17 +131,23 @@ void Configurator::service()
 String Configurator::getUserInput(String prompt, String defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    dataOut(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
+    char buf[128];
+    sprintf(buf, "%s (%s): ", prompt.c_str(), defVal.c_str());
+    //outputFunc(buf);
+    dataOut(buf);
+
     //Wait for user input
-    String input;
+    String input = {""};
     while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+
         //yield so the watchdog doesnt kill us
         yield();
     }
@@ -163,20 +164,26 @@ String Configurator::getUserInput(String prompt, String defVal)
 String Configurator::getUserInput(String prompt, float defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    dataOut(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
-    //Wait for user input
-    String input;
+    char buf[128];
+    sprintf(buf, "%s (%3.2f): ", prompt.c_str(), defVal);
+    //outputFunc(buf);
+    dataOut(buf);
+
+    //Wait for user input, with timeout?
+    String input = {""};
     while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+        
         //yield so the watchdog doesnt kill us
         yield();
-    }
+    } 
     //Remove the EoL
     input.remove(input.indexOf('\n'), 1);
     input.remove(input.indexOf('\r'), 1);
@@ -190,17 +197,23 @@ String Configurator::getUserInput(String prompt, float defVal)
 String Configurator::getUserInput(String prompt, int defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    dataOut(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%u): ", prompt.c_str(), defVal);
+    char buf[128];
+    sprintf(buf, "%s (%u): ", prompt.c_str(), defVal);
+    //outputFunc(buf);
+    dataOut(buf);
+
     //Wait for user input
-    String input;
+    String input = {""};
     while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+
         //yield so the watchdog doesnt kill us
         yield();
     }
@@ -215,31 +228,31 @@ String Configurator::getUserInput(String prompt, int defVal)
 void Configurator::displayMenu(enum pageLayout page)
 {
     //Clear the terminal
-    Serial.print(newScreen);
+    dataOut(newScreen);
 
     //Print the menu option to the terminal
     switch (page)
     {
     case Main:
-        Serial.print(mainMenu);
+        dataOut(mainMenu);
         break;
     case Distance:
-        Serial.print(distanceMenu);
+        dataOut(distanceMenu);
         break;
     case Upload:
-        Serial.print(uploadMenu);
+        dataOut(uploadMenu);
         break;
     case MQTT:
-        Serial.print(MQTTMenu);
+        dataOut(MQTTMenu);
         break;
     case LED:
-        Serial.print(LEDMenu);
+        dataOut(LEDMenu);
         break;    
     case Save:
-        Serial.print(SaveMenu);
+        dataOut(SaveMenu);
         break;
     default:
-        Serial.print("displayMenu called with invalid option.\r\n");
+        dataOut("displayMenu called with invalid option.\r\n");
         break;
     }
 }
@@ -430,13 +443,13 @@ void Configurator::LEDMenuHandler(int select)
     switch(select){
     case 1: //Brightness
         result = getUserInput("LED brightness (1-255)", (int)uvars.LEDbrightness);
-        if(result.toInt() > 0) {
-            setLEDbrightness(result.toInt());
+        if(result.toFloat() > 0) {
+            setLEDbrightness(result.toFloat());
         }
         break;
     case 2: //Timeout
         result = getUserInput("LED Timeout (s)", uvars.LEDtimeout);
-        if(result.toInt() > 0) {
+        if(result.toFloat() > 0) {
             //setLEDbrightness(result.toInt());
         }
         break;
@@ -458,7 +471,13 @@ void Configurator::SaveMenuHandler(int select)
         //Save uvars to EEPROM
         bytesWritten = EEPROM_writeAnything(0, uvars);
         EEPROM.commit();
-        Serial.printf("Wrote %u bytes to EEPROM.\r\n", bytesWritten);
+        //Report bytes written to EEPROM
+        char c[64];
+        sprintf((char *)c, "Wrote %u bytes to EEPROM.\r\n", bytesWritten);
+        dataOut(String(c));
+        break;
+    case 2:
+        dumpEEPROM();
         break;
     case 0:
         currentPage = Main;
@@ -476,7 +495,8 @@ void Configurator::dumpEEPROM()
 {
     struct user_vars test_vars;
     EEPROM_readAnything(0, test_vars);
-    Serial.printf("\
+    char c[1024];
+    sprintf((char *)c, "\
     version: %u\r\n\
     farDistance: %3.2f\r\n\
     midDistance: %3.2f\r\n\
@@ -495,6 +515,7 @@ void Configurator::dumpEEPROM()
     test_vars.version, test_vars.farDistance, test_vars.midDistance, test_vars.nearDistance, test_vars.hystDistance, test_vars.upload_user, test_vars.upload_pwrd,
     test_vars.MQTT_server, test_vars.MQTT_client_name, test_vars.distance_topic, test_vars.lwt_topic, test_vars.lwt_status_disconnected, test_vars.lwt_status_running,
     test_vars.LEDbrightness, test_vars.LEDtimeout);
+    dataOut(String(c));
 }
 
 bool Configurator::readEEPROMversion()
@@ -527,42 +548,42 @@ void Configurator::setHystDistance(float distance)
     uvars.hystDistance = distance;
 }
 
-void Configurator::setUploadUName(std::string name)
+void Configurator::setUploadUName(String name)
 {
     memcpy(uvars.upload_user, &name, name.length());
 }
 
-void Configurator::setUploadPWord(std::string word)
+void Configurator::setUploadPWord(String word)
 {
     memcpy(uvars.upload_pwrd, &word, word.length());
 }
 
-void Configurator::setMQTTServer(std::string server)
+void Configurator::setMQTTServer(String server)
 {
     memcpy(uvars.MQTT_server, &server, server.length());
 }
 
-void Configurator::setMQTTClientName(std::string clientName)
+void Configurator::setMQTTClientName(String clientName)
 {
     memcpy(uvars.MQTT_client_name, &clientName, clientName.length());
 }
 
-void Configurator::setDistanceTopic(std::string topic)
+void Configurator::setDistanceTopic(String topic)
 {
     memcpy(uvars.distance_topic, &topic, topic.length());
 }
 
-void Configurator::setLWTtopic(std::string LWTtopic)
+void Configurator::setLWTtopic(String LWTtopic)
 {
     memcpy(uvars.lwt_topic, &LWTtopic, LWTtopic.length());
 }
 
-void Configurator::setLWTdisconnectedStatus(std::string dStatus)
+void Configurator::setLWTdisconnectedStatus(String dStatus)
 {
     memcpy(uvars.lwt_status_disconnected, &dStatus, dStatus.length());
 }
 
-void Configurator::setLWTconnectedStatus(std::string cStatus)
+void Configurator::setLWTconnectedStatus(String cStatus)
 {
     memcpy(uvars.lwt_status_running, &cStatus, cStatus.length());
 }

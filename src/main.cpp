@@ -63,8 +63,8 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 1
-#define MQTT_ENABLED  (1 & WIFI_ENABLED)
+#define WIFI_ENABLED 0
+#define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
 
@@ -130,7 +130,31 @@ ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 //Config
-Configurator config;
+//Configurator config;
+
+class userConfig : public Configurator
+{
+  public:
+  virtual void dataOut(String output)
+  {
+    Serial.write(output.c_str());
+  }
+
+  virtual char dataIn(void)
+  {
+    if(Serial.available()) {
+      char c;
+      c = Serial.read();
+      return (c);
+    }
+    else {
+      return (0);
+    }
+  }
+};
+
+userConfig config;
+
 
 //===================================
 //  Prototypes
@@ -169,11 +193,11 @@ void SysTickHandler(void *pArg)
 }
 
 
-
 //===================================
 //  Setup
 //===================================
 void setup() {
+  Serial.begin(BAUD_SERIAL);
   //Start EEPROM with 512 bytes
   EEPROM.begin(512);
 
@@ -242,7 +266,10 @@ void loop() {
     ring.update();
 
     //service the configurator at the same rate as the LEDs
-    config.service();
+    while(Serial.available()) {
+      //Send serial data to configurator service
+      config.service(Serial.read());
+    }
   }
 #endif  //#if LED_ENABLED
 
