@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/*
+    Two virtual functions to pass data between class and main program
+*/
+
 #ifndef CONFIGURATOR_HPP
 #define CONFIGURATOR_HPP
 
@@ -70,16 +74,14 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 
 class Configurator {
 private:
-    typedef void (*callback_function)(std::string);
-    callback_function outputFunc;
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
+    
     pageLayout currentPage;
+    String command;    
 
-    std::string command;    
-
-    std::string getUserInput(std::string prompt, std::string defVal);
-    std::string getUserInput(std::string prompt, float defVal);
-    std::string getUserInput(std::string prompt, int defVal);
+    String getUserInput(String prompt, String defVal);
+    String getUserInput(String prompt, float defVal);
+    String getUserInput(String prompt, int defVal);
     void displayMenu(enum pageLayout page);
     void menuDecode(int select);
     void mainMenuHandler(int select);
@@ -94,20 +96,23 @@ private:
     void setMidDistance(float distance);
     void setNearDistance(float distance);
     void setHystDistance(float distance);
-    void setUploadUName(std::string name);
-    void setUploadPWord(std::string word);
-    void setMQTTServer(std::string server);
-    void setMQTTClientName(std::string clientName);
-    void setDistanceTopic(std::string topic);
-    void setLWTtopic(std::string LWTtopic);
-    void setLWTdisconnectedStatus(std::string dStatus);
-    void setLWTconnectedStatus(std::string cStatus);
+    void setUploadUName(String name);
+    void setUploadPWord(String word);
+    void setMQTTServer(String server);
+    void setMQTTClientName(String clientName);
+    void setDistanceTopic(String topic);
+    void setLWTtopic(String LWTtopic);
+    void setLWTdisconnectedStatus(String dStatus);
+    void setLWTconnectedStatus(String cStatus);
     void setLEDbrightness(uint8_t brightness);
 public:
     struct user_vars uvars;
 
-    void begin(callback_function pFunc);
+    void begin();
     void service(char input);
+
+    virtual void dataOut(String output) {};
+    virtual char dataIn(void) {return 0;};
 };
 
 #endif  //CONFIGURATOR_HPP

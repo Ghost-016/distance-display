@@ -130,7 +130,31 @@ ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
 //Config
-Configurator config;
+//Configurator config;
+
+class userConfig : public Configurator
+{
+  public:
+  virtual void dataOut(String output)
+  {
+    Serial.write(output.c_str());
+  }
+
+  virtual char dataIn(void)
+  {
+    if(Serial.available()) {
+      char c;
+      c = Serial.read();
+      return (c);
+    }
+    else {
+      return (0);
+    }
+  }
+};
+
+userConfig config;
+
 
 //===================================
 //  Prototypes
@@ -169,13 +193,6 @@ void SysTickHandler(void *pArg)
 }
 
 
-void SendString(std::string output)
-{
-  Serial.print(output.c_str());
-}
-
-
-
 //===================================
 //  Setup
 //===================================
@@ -185,7 +202,7 @@ void setup() {
   EEPROM.begin(512);
 
   //Start configurator, uses Serial
-  config.begin(&SendString);
+  config.begin();
 
   //NeoPixel init
   ring.begin();

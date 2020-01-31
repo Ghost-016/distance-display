@@ -38,9 +38,7 @@ SOFTWARE.
             user starts backing out of nested menus
 
     TODO: Make this independant of Serial
-    TODO: Either use String or std::string, not a mix
-
-    This class takes a callback function that accepts a std::string
+    TODO: Use String instead of std::string
 */
 
 #include <Arduino.h>
@@ -51,23 +49,23 @@ SOFTWARE.
 #include "main.hpp"
 #include "configurator.hpp"
 
-const static std::string newScreen = {12};
+const static String newScreen = {"\f"};
 
-const static std::string mainMenu = {   "\
+const static String mainMenu = {   "\
 [1]: Distances\r\n\
 [2]: MQTT\r\n\
 [3]: LED\r\n\
 [4]: Upload\r\n\
 [5]: Save\r\n" };
 
-const static std::string distanceMenu = { "\
+const static String distanceMenu = { "\
 [1]: Near\r\n\
 [2]: Mid\r\n\
 [3]: Far\r\n\
 [4]: Sensitivity:\r\n\
 [0]: Back\r\n" };
 
-const static std::string MQTTMenu = { "\
+const static String MQTTMenu = { "\
 [1]: Server address\r\n\
 [2]: Client name\r\n\
 [3]: Distance topic\r\n\
@@ -76,32 +74,33 @@ const static std::string MQTTMenu = { "\
 [6]: LWT connected message\r\n\
 [0]: Back\r\n" };
 
-const static std::string LEDMenu = { "\
+const static String LEDMenu = { "\
 [1]: Brightness\r\n\
 [0]: Back\r\n" };
 
-const static std::string uploadMenu = { "\
+const static String uploadMenu = { "\
 [1]: Username\r\n\
 [2]: Password\r\n\
 [0]: Back\r\n" };
 
-const static std::string SaveMenu = { "\
+const static String SaveMenu = { "\
 [1]: Save values\r\n\
+[2]: Dump EEPROM\r\n\
 [0]: Back\r\n" };
 
 
 
 
 
-void Configurator::begin(callback_function pFunc)
+void Configurator::begin()
 {
     //Make sure input is blanked
     command = {""};
-    //Store pointer to callback function internally
-    outputFunc = pFunc;
+
     //Set current page up
     currentPage = Main;
     displayMenu(currentPage);
+
     //Initialize EEPROM with 512 bytes
     EEPROM.begin(512);
     //Read from EEPROM and verify if the data is valid
@@ -113,24 +112,6 @@ void Configurator::begin(callback_function pFunc)
 
 void Configurator::service(char input)
 {
-#if 0
-    while(Serial.available()) {
-        char c = Serial.read();
-        command += c;
-        Serial.print(command);
-    }
-#endif
-
-#if 0
-    //Find \r\n
-    if((command.indexOf("\r\n") > 0) || (command.indexOf("\r") > 0)) {
-        //Look right in front of EoL and execute command
-        int selection = (int)command[0] - 48;
-        command.clear();
-        //Decode what menu we're on and what we should do with the input
-        menuDecode(selection);
-    }
-#endif
     //Accumulate input from user
     command += input;
 
@@ -147,32 +128,32 @@ void Configurator::service(char input)
 /*
     Blocking function
 */
-std::string Configurator::getUserInput(std::string prompt, std::string defVal) 
+String Configurator::getUserInput(String prompt, String defVal) 
 {
     //Clear the screen
-    //Serial.print(newScreen);
-    outputFunc(newScreen);
+    dataOut(newScreen);
 
     //Prompt user for input
-    //Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
     char buf[128];
     sprintf(buf, "%s (%s): ", prompt.c_str(), defVal.c_str());
-    outputFunc(buf);
+    //outputFunc(buf);
+    dataOut(buf);
 
     //Wait for user input
-    std::string input;
-    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+    String input = {""};
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+
         //yield so the watchdog doesnt kill us
         yield();
     }
     //Remove the EoL
-    input.erase(input.find('\n'), 1);
-    input.erase(input.find('\r'), 1);
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
 
     return (input);
 }
@@ -180,32 +161,32 @@ std::string Configurator::getUserInput(std::string prompt, std::string defVal)
 /*
     Blocking function
 */
-std::string Configurator::getUserInput(std::string prompt, float defVal) 
+String Configurator::getUserInput(String prompt, float defVal) 
 {
     //Clear the screen
-    //Serial.print(newScreen);
-    outputFunc(newScreen);
+    dataOut(newScreen);
 
     //Prompt user for input
-    //Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
     char buf[128];
     sprintf(buf, "%s (%3.2f): ", prompt.c_str(), defVal);
-    outputFunc(buf);
+    //outputFunc(buf);
+    dataOut(buf);
 
-    //Wait for user input
-    std::string input;
-    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+    //Wait for user input, with timeout?
+    String input = {""};
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+        
         //yield so the watchdog doesnt kill us
         yield();
-    }
+    } 
     //Remove the EoL
-    input.erase(input.find('\n'), 1);
-    input.erase(input.find('\r'), 1);
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
 
     return (input);
 }
@@ -213,32 +194,32 @@ std::string Configurator::getUserInput(std::string prompt, float defVal)
 /*
     Blocking function
 */
-std::string Configurator::getUserInput(std::string prompt, int defVal) 
+String Configurator::getUserInput(String prompt, int defVal) 
 {
     //Clear the screen
-    //Serial.print(newScreen);
-    outputFunc(newScreen);
+    dataOut(newScreen);
 
     //Prompt user for input
-    //Serial.printf("%s (%u): ", prompt.c_str(), defVal);
     char buf[128];
     sprintf(buf, "%s (%u): ", prompt.c_str(), defVal);
-    outputFunc(buf);
+    //outputFunc(buf);
+    dataOut(buf);
 
     //Wait for user input
-    std::string input;
-    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
-        if(Serial.available()) {
-            char c = Serial.read();
+    String input = {""};
+    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+        char c = dataIn();
+        if(c != 0) {
+            dataOut(String(c));
             input += c;
-            Serial.print(c);
         }
+
         //yield so the watchdog doesnt kill us
         yield();
     }
     //Remove the EoL
-    input.erase(input.find('\n'), 1);
-    input.erase(input.find('\r'), 1);
+    input.remove(input.indexOf('\n'), 1);
+    input.remove(input.indexOf('\r'), 1);
 
     return (input);
 }
@@ -247,39 +228,31 @@ std::string Configurator::getUserInput(std::string prompt, int defVal)
 void Configurator::displayMenu(enum pageLayout page)
 {
     //Clear the terminal
-    //Serial.print(newScreen);
-    outputFunc(newScreen);
+    dataOut(newScreen);
 
     //Print the menu option to the terminal
     switch (page)
     {
     case Main:
-        //Serial.print(mainMenu);
-        outputFunc(mainMenu);
+        dataOut(mainMenu);
         break;
     case Distance:
-        //Serial.print(distanceMenu);
-        outputFunc(distanceMenu);
+        dataOut(distanceMenu);
         break;
     case Upload:
-        //Serial.print(uploadMenu);
-        outputFunc(uploadMenu);
+        dataOut(uploadMenu);
         break;
     case MQTT:
-        //Serial.print(MQTTMenu);
-        outputFunc(MQTTMenu);
+        dataOut(MQTTMenu);
         break;
     case LED:
-        //Serial.print(LEDMenu);
-        outputFunc(LEDMenu);
+        dataOut(LEDMenu);
         break;    
     case Save:
-        //Serial.print(SaveMenu);
-        outputFunc(SaveMenu);
+        dataOut(SaveMenu);
         break;
     default:
-        //Serial.print("displayMenu called with invalid option.\r\n");
-        outputFunc("displayMenu called with invalid option.\r\n");
+        dataOut("displayMenu called with invalid option.\r\n");
         break;
     }
 }
@@ -342,15 +315,15 @@ void Configurator::mainMenuHandler(int select)
 
 void Configurator::distanceMenuHandler(int select)
 {
-    std::string result;
-    std::string defVal;
+    String result;
+    String defVal;
 
     switch(select) {
     //Near
     case 1:
         result = getUserInput("Near distance", uvars.nearDistance);
-        if(atof(result.data()) != 0) {
-            setNearDistance(atof(result.data()));
+        if(result.toFloat() != 0) {
+            setNearDistance(result.toFloat());
         }
         else {  //Use the defualt
 
@@ -359,22 +332,22 @@ void Configurator::distanceMenuHandler(int select)
     //Mid
     case 2:
         result = getUserInput("Midrange distance", uvars.midDistance);
-        if(atof(result.data()) != 0) {
-            setMidDistance(atof(result.data()));
+        if(result.toFloat() != 0) {
+            setMidDistance(result.toFloat());
         }
         break;
     //Far
     case 3:
         result = getUserInput("Far distance", uvars.farDistance);
-        if(atof(result.data()) != 0) {
-            setFarDistance(atof(result.data()));
+        if(result.toFloat() != 0) {
+            setFarDistance(result.toFloat());
         }
         break;
     //Sensitivity
     case 4:
         result = getUserInput("Sensitivity(cm)", uvars.hystDistance);
-        if(atof(result.data()) != 0) {
-            setHystDistance(atof(result.data()));
+        if(result.toFloat() != 0) {
+            setHystDistance(result.toFloat());
         }
         break;
     //Back
@@ -389,7 +362,7 @@ void Configurator::distanceMenuHandler(int select)
 
 void Configurator::uploadMenuHandler(int select)
 {
-    std::string result = {""};
+    String result = {""};
     switch(select){
     case 1: //Username
         result = getUserInput("Upload username", uvars.upload_user);
@@ -414,7 +387,7 @@ void Configurator::uploadMenuHandler(int select)
 
 void Configurator::MQTTMenuHandler(int select)
 {
-    std::string result = {""};
+    String result = {""};
 
     switch(select){
     case 1: //Server address
@@ -464,19 +437,19 @@ void Configurator::MQTTMenuHandler(int select)
 
 void Configurator::LEDMenuHandler(int select)
 {
-    std::string result = {""};
-    std::string defVal;
+    String result = {""};
+    String defVal;
 
     switch(select){
     case 1: //Brightness
         result = getUserInput("LED brightness (1-255)", (int)uvars.LEDbrightness);
-        if(atoi(result.data()) > 0) {
-            setLEDbrightness(atoi(result.data()));
+        if(result.toFloat() > 0) {
+            setLEDbrightness(result.toFloat());
         }
         break;
     case 2: //Timeout
         result = getUserInput("LED Timeout (s)", uvars.LEDtimeout);
-        if(atoi(result.data()) > 0) {
+        if(result.toFloat() > 0) {
             //setLEDbrightness(result.toInt());
         }
         break;
@@ -498,7 +471,13 @@ void Configurator::SaveMenuHandler(int select)
         //Save uvars to EEPROM
         bytesWritten = EEPROM_writeAnything(0, uvars);
         EEPROM.commit();
-        Serial.printf("Wrote %u bytes to EEPROM.\r\n", bytesWritten);
+        //Report bytes written to EEPROM
+        char c[64];
+        sprintf((char *)c, "Wrote %u bytes to EEPROM.\r\n", bytesWritten);
+        dataOut(String(c));
+        break;
+    case 2:
+        dumpEEPROM();
         break;
     case 0:
         currentPage = Main;
@@ -516,7 +495,8 @@ void Configurator::dumpEEPROM()
 {
     struct user_vars test_vars;
     EEPROM_readAnything(0, test_vars);
-    Serial.printf("\
+    char c[1024];
+    sprintf((char *)c, "\
     version: %u\r\n\
     farDistance: %3.2f\r\n\
     midDistance: %3.2f\r\n\
@@ -535,6 +515,7 @@ void Configurator::dumpEEPROM()
     test_vars.version, test_vars.farDistance, test_vars.midDistance, test_vars.nearDistance, test_vars.hystDistance, test_vars.upload_user, test_vars.upload_pwrd,
     test_vars.MQTT_server, test_vars.MQTT_client_name, test_vars.distance_topic, test_vars.lwt_topic, test_vars.lwt_status_disconnected, test_vars.lwt_status_running,
     test_vars.LEDbrightness, test_vars.LEDtimeout);
+    dataOut(String(c));
 }
 
 bool Configurator::readEEPROMversion()
@@ -567,42 +548,42 @@ void Configurator::setHystDistance(float distance)
     uvars.hystDistance = distance;
 }
 
-void Configurator::setUploadUName(std::string name)
+void Configurator::setUploadUName(String name)
 {
     memcpy(uvars.upload_user, &name, name.length());
 }
 
-void Configurator::setUploadPWord(std::string word)
+void Configurator::setUploadPWord(String word)
 {
     memcpy(uvars.upload_pwrd, &word, word.length());
 }
 
-void Configurator::setMQTTServer(std::string server)
+void Configurator::setMQTTServer(String server)
 {
     memcpy(uvars.MQTT_server, &server, server.length());
 }
 
-void Configurator::setMQTTClientName(std::string clientName)
+void Configurator::setMQTTClientName(String clientName)
 {
     memcpy(uvars.MQTT_client_name, &clientName, clientName.length());
 }
 
-void Configurator::setDistanceTopic(std::string topic)
+void Configurator::setDistanceTopic(String topic)
 {
     memcpy(uvars.distance_topic, &topic, topic.length());
 }
 
-void Configurator::setLWTtopic(std::string LWTtopic)
+void Configurator::setLWTtopic(String LWTtopic)
 {
     memcpy(uvars.lwt_topic, &LWTtopic, LWTtopic.length());
 }
 
-void Configurator::setLWTdisconnectedStatus(std::string dStatus)
+void Configurator::setLWTdisconnectedStatus(String dStatus)
 {
     memcpy(uvars.lwt_status_disconnected, &dStatus, dStatus.length());
 }
 
-void Configurator::setLWTconnectedStatus(std::string cStatus)
+void Configurator::setLWTconnectedStatus(String cStatus)
 {
     memcpy(uvars.lwt_status_running, &cStatus, cStatus.length());
 }
