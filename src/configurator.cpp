@@ -36,6 +36,9 @@ SOFTWARE.
         build up a command string that is reset when:
             the end of the menu is reached and executed
             user starts backing out of nested menus
+
+    TODO: Make this independant of Serial
+    TODO: Either use String or std::string, not a mix
 */
 
 #include <Arduino.h>
@@ -48,21 +51,21 @@ SOFTWARE.
 
 const char newScreen = 12;
 
-const static String mainMenu = {   "\
+const static std::string mainMenu = {   "\
 [1]: Distances\r\n\
 [2]: MQTT\r\n\
 [3]: LED\r\n\
 [4]: Upload\r\n\
 [5]: Save\r\n" };
 
-const static String distanceMenu = { "\
+const static std::string distanceMenu = { "\
 [1]: Near\r\n\
 [2]: Mid\r\n\
 [3]: Far\r\n\
 [4]: Sensitivity:\r\n\
 [0]: Back\r\n" };
 
-const static String MQTTMenu = { "\
+const static std::string MQTTMenu = { "\
 [1]: Server address\r\n\
 [2]: Client name\r\n\
 [3]: Distance topic\r\n\
@@ -71,21 +74,21 @@ const static String MQTTMenu = { "\
 [6]: LWT connected message\r\n\
 [0]: Back\r\n" };
 
-const static String LEDMenu = { "\
+const static std::string LEDMenu = { "\
 [1]: Brightness\r\n\
 [0]: Back\r\n" };
 
-const static String uploadMenu = { "\
+const static std::string uploadMenu = { "\
 [1]: Username\r\n\
 [2]: Password\r\n\
 [0]: Back\r\n" };
 
-const static String SaveMenu = { "\
+const static std::string SaveMenu = { "\
 [1]: Save values\r\n\
 [0]: Back\r\n" };
 
 
-String command = { "" };
+std::string command = { "" };
 
 
 void Configurator::begin()
@@ -105,11 +108,14 @@ void Configurator::begin()
 
 void Configurator::service()
 {
+#if 0
     while(Serial.available()) {
         char c = Serial.read();
         command += c;
         Serial.print(command);
     }
+#endif
+
 #if 0
     //Find \r\n
     if((command.indexOf("\r\n") > 0) || (command.indexOf("\r") > 0)) {
@@ -133,15 +139,15 @@ void Configurator::service()
 /*
     Blocking function
 */
-String Configurator::getUserInput(String prompt, String defVal) 
+std::string Configurator::getUserInput(std::string prompt, std::string defVal) 
 {
     //Clear the screen
     Serial.print(newScreen);
     //Prompt user for input
     Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
     //Wait for user input
-    String input;
-    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+    std::string input;
+    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
         if(Serial.available()) {
             char c = Serial.read();
             input += c;
@@ -160,15 +166,15 @@ String Configurator::getUserInput(String prompt, String defVal)
 /*
     Blocking function
 */
-String Configurator::getUserInput(String prompt, float defVal) 
+std::string Configurator::getUserInput(std::string prompt, float defVal) 
 {
     //Clear the screen
     Serial.print(newScreen);
     //Prompt user for input
     Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
     //Wait for user input
-    String input;
-    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+    std::string input;
+    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
         if(Serial.available()) {
             char c = Serial.read();
             input += c;
@@ -187,15 +193,15 @@ String Configurator::getUserInput(String prompt, float defVal)
 /*
     Blocking function
 */
-String Configurator::getUserInput(String prompt, int defVal) 
+std::string Configurator::getUserInput(std::string prompt, int defVal) 
 {
     //Clear the screen
     Serial.print(newScreen);
     //Prompt user for input
     Serial.printf("%s (%u): ", prompt.c_str(), defVal);
     //Wait for user input
-    String input;
-    while((input.indexOf("\r\n") < 0) && (input.indexOf('\r') < 0) && (input.indexOf('\n') < 0)) {
+    std::string input;
+    while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
         if(Serial.available()) {
             char c = Serial.read();
             input += c;
@@ -302,8 +308,8 @@ void Configurator::mainMenuHandler(int select)
 
 void Configurator::distanceMenuHandler(int select)
 {
-    String result;
-    String defVal;
+    std::string result;
+    std::string defVal;
 
     switch(select) {
     //Near
@@ -349,7 +355,7 @@ void Configurator::distanceMenuHandler(int select)
 
 void Configurator::uploadMenuHandler(int select)
 {
-    String result = {""};
+    std::string result = {""};
     switch(select){
     case 1: //Username
         result = getUserInput("Upload username", uvars.upload_user);
@@ -374,7 +380,7 @@ void Configurator::uploadMenuHandler(int select)
 
 void Configurator::MQTTMenuHandler(int select)
 {
-    String result = {""};
+    std::string result = {""};
 
     switch(select){
     case 1: //Server address
@@ -424,8 +430,8 @@ void Configurator::MQTTMenuHandler(int select)
 
 void Configurator::LEDMenuHandler(int select)
 {
-    String result = {""};
-    String defVal;
+    std::string result = {""};
+    std::string defVal;
 
     switch(select){
     case 1: //Brightness

@@ -74,9 +74,9 @@ private:
     pageLayout currentPage;
     
 
-    String getUserInput(String prompt, String defVal);
-    String getUserInput(String prompt, float defVal);
-    String getUserInput(String prompt, int defVal);
+    std::string getUserInput(std::string prompt, std::string defVal);
+    std::string getUserInput(std::string prompt, float defVal);
+    std::string getUserInput(std::string prompt, int defVal);
     void displayMenu(enum pageLayout page);
     void menuDecode(int select);
     void mainMenuHandler(int select);
