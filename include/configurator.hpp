@@ -74,7 +74,8 @@ private:
     callback_function outputFunc;
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
     pageLayout currentPage;
-    
+
+    std::string command;    
 
     std::string getUserInput(std::string prompt, std::string defVal);
     std::string getUserInput(std::string prompt, float defVal);
@@ -106,7 +107,7 @@ public:
     struct user_vars uvars;
 
     void begin(callback_function pFunc);
-    void service();
+    void service(char input);
 };
 
 #endif  //CONFIGURATOR_HPP

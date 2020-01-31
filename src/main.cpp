@@ -249,7 +249,10 @@ void loop() {
     ring.update();
 
     //service the configurator at the same rate as the LEDs
-    config.service();
+    while(Serial.available()) {
+      //Send serial data to configurator service
+      config.service(Serial.read());
+    }
   }
 #endif  //#if LED_ENABLED
 

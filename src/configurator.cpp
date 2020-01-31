@@ -44,7 +44,6 @@ SOFTWARE.
 */
 
 #include <Arduino.h>
-#include "HardwareSerial.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <string>
@@ -91,15 +90,15 @@ const static std::string SaveMenu = { "\
 [0]: Back\r\n" };
 
 
-std::string command = { "" };
+
 
 
 void Configurator::begin(callback_function pFunc)
 {
+    //Make sure input is blanked
+    command = {""};
+    //Store pointer to callback function internally
     outputFunc = pFunc;
-#if 0
-    Serial.begin(115200);
-#endif
     //Set current page up
     currentPage = Main;
     displayMenu(currentPage);
@@ -112,7 +111,7 @@ void Configurator::begin(callback_function pFunc)
 }
 
 
-void Configurator::service()
+void Configurator::service(char input)
 {
 #if 0
     while(Serial.available()) {
@@ -132,6 +131,9 @@ void Configurator::service()
         menuDecode(selection);
     }
 #endif
+    //Accumulate input from user
+    command += input;
+
     if(command.length() > 0) {
         //Convert from ASCII to int
         int selection = (int)command[0] - 48;
