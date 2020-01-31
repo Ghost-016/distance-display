@@ -63,8 +63,8 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 1
-#define MQTT_ENABLED  (1 & WIFI_ENABLED)
+#define WIFI_ENABLED 0
+#define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
 
@@ -169,16 +169,23 @@ void SysTickHandler(void *pArg)
 }
 
 
+void SendString(std::string output)
+{
+  Serial.print(output.c_str());
+}
+
+
 
 //===================================
 //  Setup
 //===================================
 void setup() {
+  Serial.begin(BAUD_SERIAL);
   //Start EEPROM with 512 bytes
   EEPROM.begin(512);
 
   //Start configurator, uses Serial
-  config.begin();
+  config.begin(&SendString);
 
   //NeoPixel init
   ring.begin();

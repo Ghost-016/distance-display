@@ -70,6 +70,8 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 
 class Configurator {
 private:
+    typedef void (*callback_function)(std::string);
+    callback_function outputFunc;
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
     pageLayout currentPage;
     
@@ -103,7 +105,7 @@ private:
 public:
     struct user_vars uvars;
 
-    void begin();
+    void begin(callback_function pFunc);
     void service();
 };
 

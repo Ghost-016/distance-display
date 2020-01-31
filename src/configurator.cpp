@@ -39,17 +39,20 @@ SOFTWARE.
 
     TODO: Make this independant of Serial
     TODO: Either use String or std::string, not a mix
+
+    This class takes a callback function that accepts a std::string
 */
 
 #include <Arduino.h>
 #include "HardwareSerial.h"
+#include <stdlib.h>
 #include <stdint.h>
 #include <string>
 #include <EEPROM.h>
 #include "main.hpp"
 #include "configurator.hpp"
 
-const char newScreen = 12;
+const static std::string newScreen = {12};
 
 const static std::string mainMenu = {   "\
 [1]: Distances\r\n\
@@ -91,9 +94,12 @@ const static std::string SaveMenu = { "\
 std::string command = { "" };
 
 
-void Configurator::begin()
+void Configurator::begin(callback_function pFunc)
 {
+    outputFunc = pFunc;
+#if 0
     Serial.begin(115200);
+#endif
     //Set current page up
     currentPage = Main;
     displayMenu(currentPage);
@@ -142,9 +148,15 @@ void Configurator::service()
 std::string Configurator::getUserInput(std::string prompt, std::string defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    //Serial.print(newScreen);
+    outputFunc(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
+    //Serial.printf("%s (%s): ", prompt.c_str(), defVal.c_str());
+    char buf[128];
+    sprintf(buf, "%s (%s): ", prompt.c_str(), defVal.c_str());
+    outputFunc(buf);
+
     //Wait for user input
     std::string input;
     while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
@@ -157,8 +169,8 @@ std::string Configurator::getUserInput(std::string prompt, std::string defVal)
         yield();
     }
     //Remove the EoL
-    input.remove(input.indexOf('\n'), 1);
-    input.remove(input.indexOf('\r'), 1);
+    input.erase(input.find('\n'), 1);
+    input.erase(input.find('\r'), 1);
 
     return (input);
 }
@@ -169,9 +181,15 @@ std::string Configurator::getUserInput(std::string prompt, std::string defVal)
 std::string Configurator::getUserInput(std::string prompt, float defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    //Serial.print(newScreen);
+    outputFunc(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
+    //Serial.printf("%s (%3.2f): ", prompt.c_str(), defVal);
+    char buf[128];
+    sprintf(buf, "%s (%3.2f): ", prompt.c_str(), defVal);
+    outputFunc(buf);
+
     //Wait for user input
     std::string input;
     while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
@@ -184,8 +202,8 @@ std::string Configurator::getUserInput(std::string prompt, float defVal)
         yield();
     }
     //Remove the EoL
-    input.remove(input.indexOf('\n'), 1);
-    input.remove(input.indexOf('\r'), 1);
+    input.erase(input.find('\n'), 1);
+    input.erase(input.find('\r'), 1);
 
     return (input);
 }
@@ -196,9 +214,15 @@ std::string Configurator::getUserInput(std::string prompt, float defVal)
 std::string Configurator::getUserInput(std::string prompt, int defVal) 
 {
     //Clear the screen
-    Serial.print(newScreen);
+    //Serial.print(newScreen);
+    outputFunc(newScreen);
+
     //Prompt user for input
-    Serial.printf("%s (%u): ", prompt.c_str(), defVal);
+    //Serial.printf("%s (%u): ", prompt.c_str(), defVal);
+    char buf[128];
+    sprintf(buf, "%s (%u): ", prompt.c_str(), defVal);
+    outputFunc(buf);
+
     //Wait for user input
     std::string input;
     while((input.find("\r\n") != std::string::npos) && (input.find('\r') != std::string::npos) && (input.find('\n') != std::string::npos)) {
@@ -211,8 +235,8 @@ std::string Configurator::getUserInput(std::string prompt, int defVal)
         yield();
     }
     //Remove the EoL
-    input.remove(input.indexOf('\n'), 1);
-    input.remove(input.indexOf('\r'), 1);
+    input.erase(input.find('\n'), 1);
+    input.erase(input.find('\r'), 1);
 
     return (input);
 }
@@ -221,31 +245,39 @@ std::string Configurator::getUserInput(std::string prompt, int defVal)
 void Configurator::displayMenu(enum pageLayout page)
 {
     //Clear the terminal
-    Serial.print(newScreen);
+    //Serial.print(newScreen);
+    outputFunc(newScreen);
 
     //Print the menu option to the terminal
     switch (page)
     {
     case Main:
-        Serial.print(mainMenu);
+        //Serial.print(mainMenu);
+        outputFunc(mainMenu);
         break;
     case Distance:
-        Serial.print(distanceMenu);
+        //Serial.print(distanceMenu);
+        outputFunc(distanceMenu);
         break;
     case Upload:
-        Serial.print(uploadMenu);
+        //Serial.print(uploadMenu);
+        outputFunc(uploadMenu);
         break;
     case MQTT:
-        Serial.print(MQTTMenu);
+        //Serial.print(MQTTMenu);
+        outputFunc(MQTTMenu);
         break;
     case LED:
-        Serial.print(LEDMenu);
+        //Serial.print(LEDMenu);
+        outputFunc(LEDMenu);
         break;    
     case Save:
-        Serial.print(SaveMenu);
+        //Serial.print(SaveMenu);
+        outputFunc(SaveMenu);
         break;
     default:
-        Serial.print("displayMenu called with invalid option.\r\n");
+        //Serial.print("displayMenu called with invalid option.\r\n");
+        outputFunc("displayMenu called with invalid option.\r\n");
         break;
     }
 }
@@ -315,8 +347,8 @@ void Configurator::distanceMenuHandler(int select)
     //Near
     case 1:
         result = getUserInput("Near distance", uvars.nearDistance);
-        if(result.toFloat() != 0) {
-            setNearDistance(result.toFloat());
+        if(atof(result.data()) != 0) {
+            setNearDistance(atof(result.data()));
         }
         else {  //Use the defualt
 
@@ -325,22 +357,22 @@ void Configurator::distanceMenuHandler(int select)
     //Mid
     case 2:
         result = getUserInput("Midrange distance", uvars.midDistance);
-        if(result.toFloat() != 0) {
-            setMidDistance(result.toFloat());
+        if(atof(result.data()) != 0) {
+            setMidDistance(atof(result.data()));
         }
         break;
     //Far
     case 3:
         result = getUserInput("Far distance", uvars.farDistance);
-        if(result.toFloat() != 0) {
-            setFarDistance(result.toFloat());
+        if(atof(result.data()) != 0) {
+            setFarDistance(atof(result.data()));
         }
         break;
     //Sensitivity
     case 4:
         result = getUserInput("Sensitivity(cm)", uvars.hystDistance);
-        if(result.toFloat() != 0) {
-            setHystDistance(result.toFloat());
+        if(atof(result.data()) != 0) {
+            setHystDistance(atof(result.data()));
         }
         break;
     //Back
@@ -436,13 +468,13 @@ void Configurator::LEDMenuHandler(int select)
     switch(select){
     case 1: //Brightness
         result = getUserInput("LED brightness (1-255)", (int)uvars.LEDbrightness);
-        if(result.toInt() > 0) {
-            setLEDbrightness(result.toInt());
+        if(atoi(result.data()) > 0) {
+            setLEDbrightness(atoi(result.data()));
         }
         break;
     case 2: //Timeout
         result = getUserInput("LED Timeout (s)", uvars.LEDtimeout);
-        if(result.toInt() > 0) {
+        if(atoi(result.data()) > 0) {
             //setLEDbrightness(result.toInt());
         }
         break;
