@@ -1,4 +1,4 @@
-# distance-display [![Build Status](https://travis-ci.com/Ghost-016/distance-display.svg?branch=Configurator-refactor)](https://travis-ci.com/Ghost-016/distance-display)
+# distance-display [![Build Status](https://travis-ci.com/Ghost-016/distance-display.svg?branch=master)](https://travis-ci.com/Ghost-016/distance-display)
 Distance to LED pattern embedded project.
 
 Also a running test/example for both git and C++.
