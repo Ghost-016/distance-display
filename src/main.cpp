@@ -24,10 +24,6 @@ SOFTWARE.
 
 
 /*
-  TODO: Add runtime configuration for MQTT server and topics
-  TODO: Add runtime configuration for HTTP updater username and password
-  TODO: Add runtime configuration for distances
-  TODO: Add runtime configuration for LED brightness
   TODOL Add runtime configuration for LED timeout
   TODO: Add runtime option to reset wifi
 */
@@ -63,7 +59,7 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 0
+#define WIFI_ENABLED 1
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
@@ -85,6 +81,10 @@ const int LEDTIMEOUT = 30;
 //Web updater
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
+
+//Telnet port
+const int port = 23;
+const int MAX_SRV_CLIENTS = 2;
 
 
 //===================================
@@ -121,16 +121,16 @@ UltraSonicDistanceSensor distanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
 #if WIFI_ENABLED
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
-#endif  //#if WIFI_ENABLED
-
-os_timer_t SysTick; //Technically just a type but...its special
 
 //Web updater
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
 
-//Config
-//Configurator config;
+WiFiServer telnetServer(port);
+WiFiClient serverClients[MAX_SRV_CLIENTS];
+#endif  //#if WIFI_ENABLED
+
+os_timer_t SysTick; //Technically just a type but...its special
 
 class userConfig : public Configurator
 {
@@ -156,6 +156,33 @@ class userConfig : public Configurator
 userConfig config;
 
 
+//Keep track of which client we're connected to
+//Spool up when a client conencts, no need to always be available
+class userConfigTelnet : public Configurator
+{
+  public:
+  userConfigTelnet(int client){clientID = client;}
+  virtual void dataOut(String output)
+  {
+    if(telnetServer.hasClient()) {
+      serverClients[clientID].write(output.c_str());
+    }
+  }
+
+  virtual char dataIn(void)
+  {
+    if(telnetServer.hasClient()) {
+      return (serverClients[clientID].read());
+    }
+    else {
+      return (0);
+    }
+  }
+  private:
+  int clientID;
+};
+
+
 //===================================
 //  Prototypes
 //===================================
@@ -163,6 +190,7 @@ bool checkBound(float newVal, float prevVal, float maxDiff);
 
 #if WIFI_ENABLED
 void setup_wifi();
+int checkClients();
 #endif  //#if WIFI_ENALBED
 
 #if MQTT_ENABLED
@@ -209,6 +237,10 @@ void setup() {
 
 #if WIFI_ENABLED
   setup_wifi();
+
+  //Start telnet server
+  telnetServer.begin();
+  telnetServer.setNoDelay(true);
 #endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
@@ -367,3 +399,27 @@ void reconnect()
   client.publish(config.uvars.lwt_topic, config.uvars.lwt_status_running);
 }
 #endif  //#if MQTT_ENABLED
+
+#if WIFI_ENABLED
+//Returns client ID or -1 if no new clients
+int checkClients()
+{
+  int i;
+  int ret = -1;
+
+  for(i = 0; i < MAX_SRV_CLIENTS; i++)
+  {
+    if(!serverClients[i]) { //equivalent to !serverClients[i].connected()
+      serverClients[i] = telnetServer.available();
+      ret = i;
+      break;
+    }
+
+    if(i == MAX_SRV_CLIENTS) {
+      telnetServer.available().println("busy"); //short-term scope WiFiClient
+    }
+  }
+
+  return (ret);
+}
+#endif  //#if WIFI_ENABLED
