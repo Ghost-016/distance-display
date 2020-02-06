@@ -165,14 +165,14 @@ class userConfigTelnet : public Configurator
   virtual void dataOut(String output)
   {
     if(telnetServer.hasClient()) {
-      serverClients[clientID].write(output.c_str());
+      serverClients[this->clientID].write(output.c_str());
     }
   }
 
   virtual char dataIn(void)
   {
     if(telnetServer.hasClient()) {
-      return (serverClients[clientID].read());
+      return (serverClients[this->clientID].read());
     }
     else {
       return (0);
