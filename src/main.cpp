@@ -24,12 +24,10 @@ SOFTWARE.
 
 
 /*
-  TODO: Add runtime configuration for MQTT server and topics
-  TODO: Add runtime configuration for HTTP updater username and password
-  TODO: Add runtime configuration for distances
-  TODO: Add runtime configuration for LED brightness
-  TODOL Add runtime configuration for LED timeout
+  TODO: Add runtime configuration for LED timeout
   TODO: Add runtime option to reset wifi
+
+  Experiment with making each feature its own class for code readability and reuse.
 */
 #ifndef UNIT_TEST
 
@@ -51,6 +49,10 @@ SOFTWARE.
 #include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 
+//Conflicts with ESP8266WebServer.h
+//#include <ESPAsyncTCP.h>
+//#include <ESPAsyncWebServer.h>
+
 //Private librarys
 #include <LEDring.hpp>
 
@@ -63,7 +65,7 @@ SOFTWARE.
 //===================================
 
 #define LED_ENABLED  1
-#define WIFI_ENABLED 0
+#define WIFI_ENABLED 1
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
 
@@ -126,7 +128,7 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
 os_timer_t SysTick; //Technically just a type but...its special
 
 //Web updater
-ESP8266WebServer httpServer(80);
+ESP8266WebServer httpServer(8080);
 ESP8266HTTPUpdateServer httpUpdater;
 
 //Config
@@ -334,9 +336,10 @@ void setup_wifi()
   MDNS.begin(host);
 
   httpUpdater.setup(&httpServer, update_path, config.uvars.upload_user, config.uvars.upload_pwrd);
-  httpServer.begin();
+  //To avoid conflict with the configuration web server, set port to 8080
+  httpServer.begin(8080);
 
-  MDNS.addService("http", "tcp", 80);
+  MDNS.addService("http", "tcp", 8080);
 }
 #endif  //#if WIFI_ENABLED
 
