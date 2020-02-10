@@ -68,13 +68,13 @@ void display::loop(float distance)
 {
   if(!isnan(distance) && (m_LEDenabled == true)) {
     //Call LED function
-    if ((distance > config->uvars.farDistance) || (distance < 0)) {
+    if ((distance > config->getFarDistance()) || (distance < 0)) {
       ring->setGreen();
     }
-    else if ((distance < config->uvars.midDistance) && (distance > (config->uvars.nearDistance + config->uvars.hystDistance))) {
+    else if ((distance < config->getMidDistance()) && (distance > (config->getNearDistance() + config->getHystDistance()))) {
       ring->setYellow();
     }
-    else if ((distance < config->uvars.nearDistance) && (distance > 0.0)) {
+    else if ((distance < config->getNearDistance()) && (distance > 0.0)) {
       ring->setRed();
     }
   }
@@ -86,7 +86,7 @@ void display::loop(float distance)
   ring->update();
  
   //Check if distance has changed by hystDistance
-  if (checkBound(distance, m_prevdistance, config->uvars.hystDistance)) {
+  if (checkBound(distance, m_prevdistance, config->getHystDistance())) {
     //update previous distance
     m_prevdistance = distance;
     //update lastEpochTime to reset the timeout
@@ -95,7 +95,7 @@ void display::loop(float distance)
     m_LEDenabled = true;
   }
   //if its been a significant ammount of time since a change
-  else if(timeClient->getEpochTime() - m_lastEpochTime >= config->uvars.LEDtimeout) {
+  else if(timeClient->getEpochTime() - m_lastEpochTime >= config->getLEDTimeout()) {
     m_lastEpochTime = timeClient->getEpochTime();
     //disable LEDs
     m_LEDenabled = false;

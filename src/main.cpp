@@ -286,7 +286,7 @@ void setup_wifi()
   //Web updater server
   MDNS.begin(host);
 
-  httpUpdater.setup(&httpServer, update_path, config.uvars.upload_user, config.uvars.upload_pwrd);
+  httpUpdater.setup(&httpServer, update_path, config.getUploadUsername(), config.getUploadPassword());
   //To avoid conflict with the configuration web server, set port to 8080
   httpServer.begin(8080);
 

@@ -74,6 +74,8 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 
 class Configurator {
 private:
+    struct user_vars uvars;
+
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
     
     pageLayout currentPage;
@@ -106,8 +108,6 @@ private:
     void setLWTconnectedStatus(String cStatus);
     void setLEDbrightness(uint8_t brightness);
 public:
-    struct user_vars uvars;
-
     void begin();
     void service(char input);
 
@@ -116,7 +116,7 @@ public:
 
     float getFarDistance() {return uvars.farDistance;};
     float getMidDistance() {return uvars.midDistance;};
-    float getNearDistacne() {return uvars.nearDistance;};
+    float getNearDistance() {return uvars.nearDistance;};
     float getHystDistance() {return uvars.hystDistance;};
     String getUploadUsername() {return String(uvars.upload_user);};
     String getUploadPassword() {return String(uvars.upload_pwrd);};

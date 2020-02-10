@@ -15,7 +15,7 @@ void test_distances()
     float mid = config.getMidDistance();
     TEST_ASSERT_EQUAL(mid, 75.0);
 
-    float near = config.getNearDistacne();
+    float near = config.getNearDistance();
     TEST_ASSERT_EQUAL(near, 40.0);
 }
 
