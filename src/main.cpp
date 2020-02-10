@@ -60,7 +60,7 @@ SOFTWARE.
 //===================================
 
 #define WIFI_ENABLED 1
-#define MQTT_ENABLED  (0 & WIFI_ENABLED)
+#define MQTT_ENABLED  (1 & WIFI_ENABLED)
 
 
 
@@ -182,8 +182,6 @@ void SysTickHandler(void *pArg)
 //===================================
 void setup() {
   Serial.begin(BAUD_SERIAL);
-  //Start EEPROM with 512 bytes
-  EEPROM.begin(512);
 
   //Start configurator, uses Serial
   config.begin();
@@ -201,7 +199,7 @@ void setup() {
 #endif  //#if WIFI_ENABLED
 
 #if MQTT_ENABLED
-  client.setServer(config.uvars.MQTT_server, 1883);
+  client.setServer(config.getMQTTServer().c_str(), 1883);
 #endif  //#if MQTT_ENABLED
 
   //SysTick init
@@ -252,20 +250,21 @@ void loop() {
     pubMQTT = false;
 
 #if MQTT_ENABLED
-      if(client.connected()) {
-        client.publish(config.uvars.distance_topic, String(distance).c_str(), true);
-      }
-    }
+    if(client.connected()) {
+      client.publish(config.getDistanceTopic().c_str(), String(distance).c_str(), true);
+    } 
 #endif
 
 #if WIFI_ENABLED
     //Update time client
     timeClient.update();    
 #endif  //#if WIFI_ENABLED
+
   }
+  
   //Yeild so WiFi core can process
   yield();
-} //Loop()
+} //loop()
 
 
 #endif  //#ifdef UNIT_TEST
@@ -304,7 +303,7 @@ void reconnect()
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
-      if (client.connect(config.uvars.MQTT_client_name, config.uvars.lwt_topic, 2, true, config.uvars.lwt_status_disconnected)) {
+      if (client.connect(config.getMQTTClientName().c_str(), config.getLWTTopic().c_str(), 2, true, config.getLWTDisconnected().c_str())) {
         //Serial.println("connected");
         lastReconnectAttempt = 0;
       }
@@ -318,6 +317,6 @@ void reconnect()
     }
   }
   //Connected, update LWT topic
-  client.publish(config.uvars.lwt_topic, config.uvars.lwt_status_running);
+  client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
 }
 #endif  //#if MQTT_ENABLED
