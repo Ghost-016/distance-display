@@ -35,8 +35,6 @@ SOFTWARE.
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 
-#include <Adafruit_NeoPixel.h>
-#include <HCSR04.h>
 #include <PubSubClient.h>
 #include <NTPClient.h>
 
@@ -53,9 +51,6 @@ SOFTWARE.
 //#include <ESPAsyncTCP.h>
 //#include <ESPAsyncWebServer.h>
 
-//Private librarys
-#include <LEDring.hpp>
-
 #include "main.hpp"
 #include "configurator.hpp"
 
@@ -64,7 +59,6 @@ SOFTWARE.
 //  Configuration
 //===================================
 
-#define LED_ENABLED  1
 #define WIFI_ENABLED 1
 #define MQTT_ENABLED  (0 & WIFI_ENABLED)
 
@@ -76,17 +70,12 @@ SOFTWARE.
 
 const int BAUD_SERIAL = 115200;
 
-const int ULTRASONIC_TRIGGER = D3;
-const int ULTRASONIC_ECHO = D2;
-const int NEOPIXEL_PIN = D1;
-const int NUMPIXELS = 16;
-
-const float DIST_HYS = 5.0;
-const int LEDTIMEOUT = 30;
-
 //Web updater
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
+
+const int ULTRASONIC_TRIGGER = D3;
+const int ULTRASONIC_ECHO = D2;
 
 
 //===================================
@@ -101,11 +90,7 @@ bool LEDenabled = true;
 
 long lastEpochTime = 0;
 
-//distance
-float distance = 0.00;
-float prevdistance = 0.00;
-
-
+float distance;
 
 //===================================
 //  Class objects
@@ -114,11 +99,6 @@ float prevdistance = 0.00;
 WiFiClient espClient;
 PubSubClient client(espClient);
 #endif  //#if MQTT_ENABLED
-
-LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-
-// Initialize sensor (trigger, echo)
-UltraSonicDistanceSensor distanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
 
 #if WIFI_ENABLED
 WiFiUDP ntpUDP;
@@ -157,11 +137,13 @@ class userConfig : public Configurator
 
 userConfig config;
 
+display *LEDdisplay;
+UltraSonicDistanceSensor *distanceSensor;
+
 
 //===================================
 //  Prototypes
 //===================================
-bool checkBound(float newVal, float prevVal, float maxDiff);
 
 #if WIFI_ENABLED
 void setup_wifi();
@@ -206,8 +188,13 @@ void setup() {
   //Start configurator, uses Serial
   config.begin();
 
+  //Initialize sensor (trigger, echo)
+  distanceSensor = new UltraSonicDistanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
+
+  LEDdisplay = new display;
+
   //NeoPixel init
-  ring.begin();
+  LEDdisplay->begin(&config, &timeClient);
 
 #if WIFI_ENABLED
   setup_wifi();
@@ -242,30 +229,14 @@ void loop() {
 #endif //#if WIFI_ENABLED
 
 
-#if LED_ENABLED
  //Check if its time to update LED array 10Hz
   if (updateLED == true) {
     updateLED = false;
-    //Update distance measurment, will delay for quite a while if sensor is not connected
-    distance = distanceSensor.measureDistanceCm();
 
-    if(!isnan(distance) && (LEDenabled == true)) {
-      //Call LED function
-      if ((distance > config.uvars.farDistance) || (distance < 0)) {
-        ring.setGreen();
-      }
-      else if ((distance < config.uvars.midDistance) && (distance > (config.uvars.nearDistance + config.uvars.hystDistance))) {
-        ring.setYellow();
-      }
-      else if ((distance < config.uvars.nearDistance) && (distance > 0.0)) {
-        ring.setRed();
-      }
-    }
-    else {
-      ring.off();
-    }
-    //update LEDs regularly
-    ring.update();
+    //Update distance measurment, will delay for quite a while if sensor is not connected
+    distance = distanceSensor->measureDistanceCm();
+
+    LEDdisplay->loop(distance);
 
     //service the configurator at the same rate as the LEDs
     while(Serial.available()) {
@@ -273,36 +244,20 @@ void loop() {
       config.service(Serial.read());
     }
   }
-#endif  //#if LED_ENABLED
+
 
   //Check if its time to publish MQTT 1Hz
   //Also check if the LEDs can be turned off
   if (pubMQTT == true) {
     pubMQTT = false;
 
-    if (checkBound(distance, prevdistance, DIST_HYS)) {
-      prevdistance = distance;
 #if MQTT_ENABLED
       if(client.connected()) {
         client.publish(config.uvars.distance_topic, String(distance).c_str(), true);
       }
-#endif  //#if MQTT_ENABLED
-      LEDenabled = true;
-#if WIFI_ENABLED
-      //update lastEpochTime to reset the timeout
-      lastEpochTime = timeClient.getEpochTime();
-#endif  //#if WIFI_ENABLED
     }
-    else {
-#if WIFI_ENABLED
-      //Check if the distance has changed a reasonable ammount in the last 30 seconds
-      if(timeClient.getEpochTime() - lastEpochTime >= LEDTIMEOUT) {
-        lastEpochTime = timeClient.getEpochTime();
-        //disable LEDs
-        LEDenabled = false;
-      }
-#endif  //#if WIFI_ENABLED
-    }
+#endif
+
 #if WIFI_ENABLED
     //Update time client
     timeClient.update();    
@@ -313,10 +268,6 @@ void loop() {
 } //Loop()
 
 
-//Returns true if newVal is greater or less than prevVal by maxDiff
-bool checkBound(float newVal, float prevVal, float maxDiff) {
-  return (!isnan(newVal) && ((newVal < prevVal - maxDiff) || (newVal > prevVal + maxDiff)));
-}
 #endif  //#ifdef UNIT_TEST
 
 #if WIFI_ENABLED

@@ -22,13 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
-#include <HCSR04.h>
 
-#include "display.hpp"
+#ifndef DISPLAY_HPP
+#define DISPLAY_HPP
 
-//UltraSonicDistanceSensor *distanceSensor;
-//display *LEDdisplay;
+#include <LEDring.hpp>
+#include <NTPClient.h>
 
-#endif  //MAIN_HPP
+#include "configurator.hpp"
+
+class display
+{
+public:
+    void begin(Configurator *config, NTPClient *timeClient);
+    void loop(float distance);
+private:
+    long m_prevTime;
+    long m_lastEpochTime;
+    bool m_LEDenabled;
+    float m_prevdistance;
+
+    LEDring *ring;
+    Configurator *config;
+    NTPClient *timeClient;
+
+    bool checkBound(float newVal, float prevVal, float maxDiff);
+};
+
+#endif  //DISPLAY_HPP
