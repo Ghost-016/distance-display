@@ -35,6 +35,8 @@ SOFTWARE.
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 
+#include <HCSR04.h>
+
 #include <PubSubClient.h>
 #include <NTPClient.h>
 
@@ -51,17 +53,8 @@ SOFTWARE.
 //#include <ESPAsyncTCP.h>
 //#include <ESPAsyncWebServer.h>
 
-#include "main.hpp"
 #include "configurator.hpp"
-
-
-//===================================
-//  Configuration
-//===================================
-
-#define WIFI_ENABLED 1
-#define MQTT_ENABLED  (1 & WIFI_ENABLED)
-
+#include "display.hpp"
 
 
 //===================================
@@ -74,6 +67,7 @@ const int BAUD_SERIAL = 115200;
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
 
+//HCSR04 ultrasonic distance sensor connection
 const int ULTRASONIC_TRIGGER = D3;
 const int ULTRASONIC_ECHO = D2;
 
@@ -81,29 +75,27 @@ const int ULTRASONIC_ECHO = D2;
 //===================================
 //  Global Variables
 //===================================
-volatile bool serialDistance = false;
 volatile bool updateLED = false;
 volatile bool pubMQTT = false;
 volatile int tick = 0;
 
 bool LEDenabled = true;
 
-long lastEpochTime = 0;
-
 float distance;
 
 //===================================
 //  Class objects
 //===================================
-#if MQTT_ENABLED
-WiFiClient espClient;
-PubSubClient client(espClient);
-#endif  //#if MQTT_ENABLED
 
-#if WIFI_ENABLED
+//WiFi client stuffs
+WiFiClient espClient;
+
+//MQTT client stuffs
+PubSubClient client(espClient);
+
+//NTP client stuffs
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
-#endif  //#if WIFI_ENABLED
 
 os_timer_t SysTick; //Technically just a type but...its special
 
@@ -111,9 +103,7 @@ os_timer_t SysTick; //Technically just a type but...its special
 ESP8266WebServer httpServer(8080);
 ESP8266HTTPUpdateServer httpUpdater;
 
-//Config
-//Configurator config;
-
+//Override data in/out for configurator class to serial
 class userConfig : public Configurator
 {
   public:
@@ -145,13 +135,9 @@ UltraSonicDistanceSensor *distanceSensor;
 //  Prototypes
 //===================================
 
-#if WIFI_ENABLED
 void setup_wifi();
-#endif  //#if WIFI_ENALBED
 
-#if MQTT_ENABLED
 void reconnect();
-#endif  //#if MQTT_ENABLED
 
 //===================================
 //  SysTick ISR
@@ -160,11 +146,6 @@ void SysTickHandler(void *pArg)
 {
   //update the LEDs every time timer fires
   updateLED = true;
-
-  //publish distance to serial at 2Hz
-  if ((tick % 5) == 0) {
-    serialDistance = true;
-  }
 
   //publish MQTT from distance at 1Hz
   if ((tick % 10) == 0) {
@@ -181,6 +162,7 @@ void SysTickHandler(void *pArg)
 //  Setup
 //===================================
 void setup() {
+  //Initialize serial for configuration
   Serial.begin(BAUD_SERIAL);
 
   //Start configurator, uses Serial
@@ -189,18 +171,17 @@ void setup() {
   //Initialize sensor (trigger, echo)
   distanceSensor = new UltraSonicDistanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
 
+  //Initialize LED ring display
   LEDdisplay = new display;
 
   //NeoPixel init
   LEDdisplay->begin(&config, &timeClient);
 
-#if WIFI_ENABLED
+  //Connect to wifi, blocks until wifi established
   setup_wifi();
-#endif  //#if WIFI_ENABLED
 
-#if MQTT_ENABLED
+  //MQTT client setup
   client.setServer(config.getMQTTServer().c_str(), 1883);
-#endif  //#if MQTT_ENABLED
 
   //SysTick init
   os_timer_setfn(&SysTick, &SysTickHandler, NULL);
@@ -214,17 +195,16 @@ void setup() {
 //===================================
 void loop() {
 
-#if MQTT_ENABLED
+  //MQTT client
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-#endif //#if MQTT_ENABLED
 
-#if WIFI_ENABLED
+  //HTTP update server
   httpServer.handleClient();
+  //Multicast DNS to respond to our URL
   MDNS.update();
-#endif //#if WIFI_ENABLED
 
 
  //Check if its time to update LED array 10Hz
@@ -234,11 +214,12 @@ void loop() {
     //Update distance measurment, will delay for quite a while if sensor is not connected
     distance = distanceSensor->measureDistanceCm();
 
+    //Service the LED display
     LEDdisplay->loop(distance);
 
     //service the configurator at the same rate as the LEDs
     while(Serial.available()) {
-      //Send serial data to configurator service
+      //Send data to configurator service
       config.service(Serial.read());
     }
   }
@@ -249,16 +230,12 @@ void loop() {
   if (pubMQTT == true) {
     pubMQTT = false;
 
-#if MQTT_ENABLED
     if(client.connected()) {
       client.publish(config.getDistanceTopic().c_str(), String(distance).c_str(), true);
     } 
-#endif
 
-#if WIFI_ENABLED
     //Update time client
-    timeClient.update();    
-#endif  //#if WIFI_ENABLED
+    timeClient.update();
 
   }
   
@@ -267,9 +244,6 @@ void loop() {
 } //loop()
 
 
-#endif  //#ifdef UNIT_TEST
-
-#if WIFI_ENABLED
 void setup_wifi()
 {
   //Straight from the basic library example
@@ -280,7 +254,6 @@ void setup_wifi()
   timeClient.begin();
   //Set the last time to when we start so LEDs will go for ~max timout time
   timeClient.update();
-  lastEpochTime = timeClient.getEpochTime();
 
   //Web updater server
   MDNS.begin(host);
@@ -291,32 +264,24 @@ void setup_wifi()
 
   MDNS.addService("http", "tcp", 8080);
 }
-#endif  //#if WIFI_ENABLED
 
-#if MQTT_ENABLED
 void reconnect()
 {
   static long lastReconnectAttempt = 0;
   //Keep trying until we're reconnected but dont hold up the rest of the program
   if(!client.connected()) {
     long now = millis();
+    //If its been 5 seconds
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
       if (client.connect(config.getMQTTClientName().c_str(), config.getLWTTopic().c_str(), 2, true, config.getLWTDisconnected().c_str())) {
-        //Serial.println("connected");
         lastReconnectAttempt = 0;
-      }
-      else {
-        //Serial.print("failed, rc=");
-        //Serial.print(client.state());
-        //Serial.println(" trying again in 5 seconds");
-        //Wait 5 seconds before retrying
-        //delay(5000);
       }
     }
   }
   //Connected, update LWT topic
   client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
 }
-#endif  //#if MQTT_ENABLED
+
+#endif  //#ifdef UNIT_TEST

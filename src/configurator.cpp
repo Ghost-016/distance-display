@@ -46,7 +46,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string>
 #include <EEPROM.h>
-#include "main.hpp"
 #include "configurator.hpp"
 
 const static String newScreen = {"\f"};
