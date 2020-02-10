@@ -24,6 +24,8 @@ SOFTWARE.
 
 #ifndef LEDRING_HPP
 #define LEDRING_HPP
+#include <Adafruit_NeoPixel.h>
+
 class LEDring: public Adafruit_NeoPixel {
 private:
     int i;

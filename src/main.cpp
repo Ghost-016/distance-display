@@ -24,12 +24,10 @@ SOFTWARE.
 
 
 /*
-  TODO: Add runtime configuration for MQTT server and topics
-  TODO: Add runtime configuration for HTTP updater username and password
-  TODO: Add runtime configuration for distances
-  TODO: Add runtime configuration for LED brightness
-  TODOL Add runtime configuration for LED timeout
+  TODO: Add runtime configuration for LED timeout
   TODO: Add runtime option to reset wifi
+
+  Experiment with making each feature its own class for code readability and reuse.
 */
 #ifndef UNIT_TEST
 
@@ -37,8 +35,8 @@ SOFTWARE.
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 
-#include <Adafruit_NeoPixel.h>
 #include <HCSR04.h>
+
 #include <PubSubClient.h>
 #include <NTPClient.h>
 
@@ -51,21 +49,12 @@ SOFTWARE.
 #include <EEPROM.h>
 #include <ESP8266HTTPUpdateServer.h>
 
-//Private librarys
-#include <LEDring.hpp>
+//Conflicts with ESP8266WebServer.h
+//#include <ESPAsyncTCP.h>
+//#include <ESPAsyncWebServer.h>
 
-#include "main.hpp"
 #include "configurator.hpp"
-
-
-//===================================
-//  Configuration
-//===================================
-
-#define LED_ENABLED  1
-#define WIFI_ENABLED 0
-#define MQTT_ENABLED  (0 & WIFI_ENABLED)
-
+#include "display.hpp"
 
 
 //===================================
@@ -74,64 +63,47 @@ SOFTWARE.
 
 const int BAUD_SERIAL = 115200;
 
-const int ULTRASONIC_TRIGGER = D3;
-const int ULTRASONIC_ECHO = D2;
-const int NEOPIXEL_PIN = D1;
-const int NUMPIXELS = 16;
-
-const float DIST_HYS = 5.0;
-const int LEDTIMEOUT = 30;
-
 //Web updater
 const char* host = "esp8266-webupdate";
 const char* update_path = "/firmware";
+
+//HCSR04 ultrasonic distance sensor connection
+const int ULTRASONIC_TRIGGER = D3;
+const int ULTRASONIC_ECHO = D2;
 
 
 //===================================
 //  Global Variables
 //===================================
-volatile bool serialDistance = false;
 volatile bool updateLED = false;
 volatile bool pubMQTT = false;
 volatile int tick = 0;
 
 bool LEDenabled = true;
 
-long lastEpochTime = 0;
-
-//distance
-float distance = 0.00;
-float prevdistance = 0.00;
-
-
+float distance;
 
 //===================================
 //  Class objects
 //===================================
-#if MQTT_ENABLED
+
+//WiFi client stuffs
 WiFiClient espClient;
+
+//MQTT client stuffs
 PubSubClient client(espClient);
-#endif  //#if MQTT_ENABLED
 
-LEDring ring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
-
-// Initialize sensor (trigger, echo)
-UltraSonicDistanceSensor distanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
-
-#if WIFI_ENABLED
+//NTP client stuffs
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "us.pool.ntp.org", -21600, 60000); //CST offset
-#endif  //#if WIFI_ENABLED
 
 os_timer_t SysTick; //Technically just a type but...its special
 
 //Web updater
-ESP8266WebServer httpServer(80);
+ESP8266WebServer httpServer(8080);
 ESP8266HTTPUpdateServer httpUpdater;
 
-//Config
-//Configurator config;
-
+//Override data in/out for configurator class to serial
 class userConfig : public Configurator
 {
   public:
@@ -155,19 +127,17 @@ class userConfig : public Configurator
 
 userConfig config;
 
+display *LEDdisplay;
+UltraSonicDistanceSensor *distanceSensor;
+
 
 //===================================
 //  Prototypes
 //===================================
-bool checkBound(float newVal, float prevVal, float maxDiff);
 
-#if WIFI_ENABLED
 void setup_wifi();
-#endif  //#if WIFI_ENALBED
 
-#if MQTT_ENABLED
 void reconnect();
-#endif  //#if MQTT_ENABLED
 
 //===================================
 //  SysTick ISR
@@ -176,11 +146,6 @@ void SysTickHandler(void *pArg)
 {
   //update the LEDs every time timer fires
   updateLED = true;
-
-  //publish distance to serial at 2Hz
-  if ((tick % 5) == 0) {
-    serialDistance = true;
-  }
 
   //publish MQTT from distance at 1Hz
   if ((tick % 10) == 0) {
@@ -197,23 +162,26 @@ void SysTickHandler(void *pArg)
 //  Setup
 //===================================
 void setup() {
+  //Initialize serial for configuration
   Serial.begin(BAUD_SERIAL);
-  //Start EEPROM with 512 bytes
-  EEPROM.begin(512);
 
   //Start configurator, uses Serial
   config.begin();
 
+  //Initialize sensor (trigger, echo)
+  distanceSensor = new UltraSonicDistanceSensor(ULTRASONIC_TRIGGER, ULTRASONIC_ECHO);
+
+  //Initialize LED ring display
+  LEDdisplay = new display;
+
   //NeoPixel init
-  ring.begin();
+  LEDdisplay->begin(&config, &timeClient);
 
-#if WIFI_ENABLED
+  //Connect to wifi, blocks until wifi established
   setup_wifi();
-#endif  //#if WIFI_ENABLED
 
-#if MQTT_ENABLED
-  client.setServer(config.uvars.MQTT_server, 1883);
-#endif  //#if MQTT_ENABLED
+  //MQTT client setup
+  client.setServer(config.getMQTTServer().c_str(), 1883);
 
   //SysTick init
   os_timer_setfn(&SysTick, &SysTickHandler, NULL);
@@ -227,97 +195,55 @@ void setup() {
 //===================================
 void loop() {
 
-#if MQTT_ENABLED
+  //MQTT client
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-#endif //#if MQTT_ENABLED
 
-#if WIFI_ENABLED
+  //HTTP update server
   httpServer.handleClient();
+  //Multicast DNS to respond to our URL
   MDNS.update();
-#endif //#if WIFI_ENABLED
 
 
-#if LED_ENABLED
  //Check if its time to update LED array 10Hz
   if (updateLED == true) {
     updateLED = false;
-    //Update distance measurment, will delay for quite a while if sensor is not connected
-    distance = distanceSensor.measureDistanceCm();
 
-    if(!isnan(distance) && (LEDenabled == true)) {
-      //Call LED function
-      if ((distance > config.uvars.farDistance) || (distance < 0)) {
-        ring.setGreen();
-      }
-      else if ((distance < config.uvars.midDistance) && (distance > (config.uvars.nearDistance + config.uvars.hystDistance))) {
-        ring.setYellow();
-      }
-      else if ((distance < config.uvars.nearDistance) && (distance > 0.0)) {
-        ring.setRed();
-      }
-    }
-    else {
-      ring.off();
-    }
-    //update LEDs regularly
-    ring.update();
+    //Update distance measurment, will delay for quite a while if sensor is not connected
+    distance = distanceSensor->measureDistanceCm();
+
+    //Service the LED display
+    LEDdisplay->loop(distance);
 
     //service the configurator at the same rate as the LEDs
     while(Serial.available()) {
-      //Send serial data to configurator service
+      //Send data to configurator service
       config.service(Serial.read());
     }
   }
-#endif  //#if LED_ENABLED
+
 
   //Check if its time to publish MQTT 1Hz
   //Also check if the LEDs can be turned off
   if (pubMQTT == true) {
     pubMQTT = false;
 
-    if (checkBound(distance, prevdistance, DIST_HYS)) {
-      prevdistance = distance;
-#if MQTT_ENABLED
-      if(client.connected()) {
-        client.publish(config.uvars.distance_topic, String(distance).c_str(), true);
-      }
-#endif  //#if MQTT_ENABLED
-      LEDenabled = true;
-#if WIFI_ENABLED
-      //update lastEpochTime to reset the timeout
-      lastEpochTime = timeClient.getEpochTime();
-#endif  //#if WIFI_ENABLED
-    }
-    else {
-#if WIFI_ENABLED
-      //Check if the distance has changed a reasonable ammount in the last 30 seconds
-      if(timeClient.getEpochTime() - lastEpochTime >= LEDTIMEOUT) {
-        lastEpochTime = timeClient.getEpochTime();
-        //disable LEDs
-        LEDenabled = false;
-      }
-#endif  //#if WIFI_ENABLED
-    }
-#if WIFI_ENABLED
+    if(client.connected()) {
+      client.publish(config.getDistanceTopic().c_str(), String(distance).c_str(), true);
+    } 
+
     //Update time client
-    timeClient.update();    
-#endif  //#if WIFI_ENABLED
+    timeClient.update();
+
   }
+  
   //Yeild so WiFi core can process
   yield();
-} //Loop()
+} //loop()
 
 
-//Returns true if newVal is greater or less than prevVal by maxDiff
-bool checkBound(float newVal, float prevVal, float maxDiff) {
-  return (!isnan(newVal) && ((newVal < prevVal - maxDiff) || (newVal > prevVal + maxDiff)));
-}
-#endif  //#ifdef UNIT_TEST
-
-#if WIFI_ENABLED
 void setup_wifi()
 {
   //Straight from the basic library example
@@ -328,42 +254,34 @@ void setup_wifi()
   timeClient.begin();
   //Set the last time to when we start so LEDs will go for ~max timout time
   timeClient.update();
-  lastEpochTime = timeClient.getEpochTime();
 
   //Web updater server
   MDNS.begin(host);
 
-  httpUpdater.setup(&httpServer, update_path, config.uvars.upload_user, config.uvars.upload_pwrd);
-  httpServer.begin();
+  httpUpdater.setup(&httpServer, update_path, config.getUploadUsername(), config.getUploadPassword());
+  //To avoid conflict with the configuration web server, set port to 8080
+  httpServer.begin(8080);
 
-  MDNS.addService("http", "tcp", 80);
+  MDNS.addService("http", "tcp", 8080);
 }
-#endif  //#if WIFI_ENABLED
 
-#if MQTT_ENABLED
 void reconnect()
 {
   static long lastReconnectAttempt = 0;
   //Keep trying until we're reconnected but dont hold up the rest of the program
   if(!client.connected()) {
     long now = millis();
+    //If its been 5 seconds
     if (now - lastReconnectAttempt > 5000) {
       lastReconnectAttempt = now;
       //Attempt to connect and send LWT topic and message
-      if (client.connect(config.uvars.MQTT_client_name, config.uvars.lwt_topic, 2, true, config.uvars.lwt_status_disconnected)) {
-        //Serial.println("connected");
+      if (client.connect(config.getMQTTClientName().c_str(), config.getLWTTopic().c_str(), 2, true, config.getLWTDisconnected().c_str())) {
         lastReconnectAttempt = 0;
-      }
-      else {
-        //Serial.print("failed, rc=");
-        //Serial.print(client.state());
-        //Serial.println(" trying again in 5 seconds");
-        //Wait 5 seconds before retrying
-        //delay(5000);
       }
     }
   }
   //Connected, update LWT topic
-  client.publish(config.uvars.lwt_topic, config.uvars.lwt_status_running);
+  client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
 }
-#endif  //#if MQTT_ENABLED
+
+#endif  //#ifdef UNIT_TEST

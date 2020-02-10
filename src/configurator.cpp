@@ -46,7 +46,6 @@ SOFTWARE.
 #include <stdint.h>
 #include <string>
 #include <EEPROM.h>
-#include "main.hpp"
 #include "configurator.hpp"
 
 const static String newScreen = {"\f"};
@@ -76,6 +75,7 @@ const static String MQTTMenu = { "\
 
 const static String LEDMenu = { "\
 [1]: Brightness\r\n\
+[2]: Timeout\r\n\
 [0]: Back\r\n" };
 
 const static String uploadMenu = { "\
@@ -87,9 +87,6 @@ const static String SaveMenu = { "\
 [1]: Save values\r\n\
 [2]: Dump EEPROM\r\n\
 [0]: Back\r\n" };
-
-
-
 
 
 void Configurator::begin()

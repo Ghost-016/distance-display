@@ -74,6 +74,8 @@ template <class T> int EEPROM_readAnything(int ee, T& value)
 
 class Configurator {
 private:
+    struct user_vars uvars;
+
     enum pageLayout { Main, Distance, MQTT, LED, Upload, Save };
     
     pageLayout currentPage;
@@ -106,13 +108,26 @@ private:
     void setLWTconnectedStatus(String cStatus);
     void setLEDbrightness(uint8_t brightness);
 public:
-    struct user_vars uvars;
-
     void begin();
     void service(char input);
 
     virtual void dataOut(String output) {};
     virtual char dataIn(void) {return 0;};
+
+    float getFarDistance() {return uvars.farDistance;};
+    float getMidDistance() {return uvars.midDistance;};
+    float getNearDistance() {return uvars.nearDistance;};
+    float getHystDistance() {return uvars.hystDistance;};
+    String getUploadUsername() {return String(uvars.upload_user);};
+    String getUploadPassword() {return String(uvars.upload_pwrd);};
+    String getMQTTServer() {return String(uvars.MQTT_server);};
+    String getMQTTClientName() {return String(uvars.MQTT_client_name);};
+    String getDistanceTopic() {return String(uvars.distance_topic);};
+    String getLWTTopic() {return String(uvars.lwt_topic);};
+    String getLWTDisconnected() {return String(uvars.lwt_status_disconnected);};
+    String getLWTConnected() {return String(uvars.lwt_status_running);};
+    int getLEDBrightness() {return uvars.LEDbrightness;};
+    int getLEDTimeout() {return uvars.LEDtimeout;};
 };
 
 #endif  //CONFIGURATOR_HPP
