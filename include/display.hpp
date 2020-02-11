@@ -34,7 +34,7 @@ SOFTWARE.
 class display
 {
 public:
-    void begin(Configurator *config, NTPClient *timeClient);
+    void begin(const Configurator &config, NTPClient &timeClient);
     void loop(float distance);
 private:
     long m_prevTime;
@@ -43,8 +43,8 @@ private:
     float m_prevdistance;
 
     LEDring *ring;
-    Configurator *config;
-    NTPClient *timeClient;
+    const Configurator *m_config;
+    NTPClient *m_timeClient;
 
     bool checkBound(float newVal, float prevVal, float maxDiff);
 };

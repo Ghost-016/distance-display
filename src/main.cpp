@@ -175,7 +175,7 @@ void setup() {
   LEDdisplay = new display;
 
   //NeoPixel init
-  LEDdisplay->begin(&config, &timeClient);
+  LEDdisplay->begin(config, timeClient);
 
   //Connect to wifi, blocks until wifi established
   setup_wifi();

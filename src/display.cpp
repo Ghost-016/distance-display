@@ -45,13 +45,13 @@ const int NUMPIXELS = 16;
 /*
 
 */
-void display::begin(Configurator *config, NTPClient *timeClient)
+void display::begin(const Configurator &config, NTPClient &timeClient)
 {
-  //
-  config = this->config;
+  //assign the config class pointer for internal use
+  m_config = &config;
 
-  //
-  timeClient = this->timeClient;
+  //assign the NTP time client pointer for internal use
+  m_timeClient = &timeClient;
 
   //Initialize LED ring
   ring = new LEDring(NUMPIXELS, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -68,13 +68,13 @@ void display::loop(float distance)
 {
   if(!isnan(distance) && (m_LEDenabled == true)) {
     //Call LED function
-    if ((distance > config->getFarDistance()) || (distance < 0)) {
+    if ((distance > m_config->getFarDistance()) || (distance < 0)) {
       ring->setGreen();
     }
-    else if ((distance < config->getMidDistance()) && (distance > (config->getNearDistance() + config->getHystDistance()))) {
+    else if ((distance < m_config->getMidDistance()) && (distance > (m_config->getNearDistance() + m_config->getHystDistance()))) {
       ring->setYellow();
     }
-    else if ((distance < config->getNearDistance()) && (distance > 0.0)) {
+    else if ((distance < m_config->getNearDistance()) && (distance > 0.0)) {
       ring->setRed();
     }
   }
@@ -84,22 +84,23 @@ void display::loop(float distance)
 
   //update LEDs regularly
   ring->update();
- 
+ #if 1
   //Check if distance has changed by hystDistance
-  if (checkBound(distance, m_prevdistance, config->getHystDistance())) {
+  if (checkBound(distance, m_prevdistance, m_config->getHystDistance())) {
     //update previous distance
     m_prevdistance = distance;
     //update lastEpochTime to reset the timeout
-    m_lastEpochTime = timeClient->getEpochTime();
+    m_lastEpochTime = m_timeClient->getEpochTime();
     //enable LEDs
     m_LEDenabled = true;
   }
   //if its been a significant ammount of time since a change
-  else if(timeClient->getEpochTime() - m_lastEpochTime >= config->getLEDTimeout()) {
-    m_lastEpochTime = timeClient->getEpochTime();
+  else if(m_timeClient->getEpochTime() - m_lastEpochTime >= m_config->getLEDTimeout()) {
+    m_lastEpochTime = m_timeClient->getEpochTime();
     //disable LEDs
     m_LEDenabled = false;
   }
+  #endif
 }
     
 
