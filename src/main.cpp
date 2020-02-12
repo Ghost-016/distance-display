@@ -56,7 +56,6 @@ SOFTWARE.
 #include "configurator.hpp"
 #include "display.hpp"
 
-
 //===================================
 //  Constants
 //===================================
@@ -103,6 +102,9 @@ os_timer_t SysTick; //Technically just a type but...its special
 ESP8266WebServer httpServer(8080);
 ESP8266HTTPUpdateServer httpUpdater;
 
+//Web configuration
+ESP8266WebServer configServer;
+
 //Override data in/out for configurator class to serial
 class userConfig : public Configurator
 {
@@ -138,6 +140,9 @@ UltraSonicDistanceSensor *distanceSensor;
 void setup_wifi();
 
 void reconnect();
+
+void handleRoot();
+void handleNotFound();
 
 //===================================
 //  SysTick ISR
@@ -188,6 +193,10 @@ void setup() {
 
   //Enable SysTick
   os_timer_arm(&SysTick, 100, true);
+
+    configServer.on("/", handleRoot);
+    configServer.onNotFound(handleNotFound);
+    configServer.begin();
 }
 
 //===================================
@@ -205,6 +214,8 @@ void loop() {
   httpServer.handleClient();
   //Multicast DNS to respond to our URL
   MDNS.update();
+
+  configServer.handleClient();
 
 
  //Check if its time to update LED array 10Hz
@@ -282,6 +293,53 @@ void reconnect()
   }
   //Connected, update LWT topic
   client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
+}
+
+void handleRoot()
+{
+    char temp[400];
+    int sec = millis() / 1000;
+    int min = sec / 60;
+    int hr = min / 60;
+
+    snprintf(temp, 400,
+               "<html>\
+  <head>\
+    <meta http-equiv='refresh' content='5'/>\
+    <title>ESP8266 Demo</title>\
+    <style>\
+      body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }\
+    </style>\
+  </head>\
+  <body>\
+    <h1>Hello from ESP8266!</h1>\
+    <p>Uptime: %02d:%02d:%02d</p>\
+    <img src=\"/test.svg\" />\
+  </body>\
+</html>",
+
+           hr, min % 60, sec % 60
+    );
+
+    configServer.send(200, "text/html", temp);
+}
+
+void handleNotFound()
+{
+    String message = "File Not Found\n\n";
+    message += "URI: ";
+    message += configServer.uri();
+    message += "\nMethod: ";
+    message += (configServer.method() == HTTP_GET) ? "GET" : "POST";
+    message += "\nArguments: ";
+    message += configServer.args();
+    message += "\n";
+
+    for (uint8_t i = 0; i < configServer.args(); i++) {
+        message += " " + configServer.argName(i) + ": " + configServer.arg(i) + "\n";
+    }
+
+    configServer.send(404, "text/plain", message);
 }
 
 #endif  //#ifdef UNIT_TEST
