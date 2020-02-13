@@ -142,6 +142,7 @@ void setup_wifi();
 void reconnect();
 
 void handleRoot();
+void drawGraph();
 void handleNotFound();
 
 //===================================
