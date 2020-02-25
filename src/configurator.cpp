@@ -89,6 +89,9 @@ const static String SaveMenu = { "\
 [0]: Back\r\n" };
 
 
+/*!
+    \brief Configures and initializes the Configurator state machine and sets up EEPROM
+*/
 void Configurator::begin()
 {
     //Make sure input is blanked
@@ -106,7 +109,13 @@ void Configurator::begin()
     }
 }
 
+/*! 
+    \brief Service for Configurator state machine
 
+    Takes user input one char at a time and passes it to the menu decoder
+    \param input Char input from user
+
+*/
 void Configurator::service(char input)
 {
     //Accumulate input from user
@@ -122,8 +131,11 @@ void Configurator::service(char input)
     }
 }
 
-/*
-    Blocking function
+/*!
+    \brief Blocking function, returns when EoL char is received from dataIn()
+
+    \param prompt String to send user
+    \param defVal Default value (String) displayed to user and used in case nothing is entered by user
 */
 String Configurator::getUserInput(String prompt, String defVal) 
 {
@@ -155,8 +167,11 @@ String Configurator::getUserInput(String prompt, String defVal)
     return (input);
 }
 
-/*
-    Blocking function
+/*!
+    \brief Blocking function, returns when EoL char is received from dataIn()
+
+    \param prompt String to send user
+    \param defVal Default value (float) displayed to user and used in case nothing is entered by user
 */
 String Configurator::getUserInput(String prompt, float defVal) 
 {
@@ -188,8 +203,11 @@ String Configurator::getUserInput(String prompt, float defVal)
     return (input);
 }
 
-/*
-    Blocking function
+/*!
+    \brief Blocking function, returns when EoL char is received from dataIn()
+
+    \param prompt String to send user
+    \param defVal Default value (int) displayed to user and used in case nothing is entered by user
 */
 String Configurator::getUserInput(String prompt, int defVal) 
 {
