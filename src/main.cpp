@@ -186,8 +186,10 @@ void setup() {
   //Connect to wifi, blocks until wifi established
   setup_wifi();
 
+#if 0
   //MQTT client setup
   client.setServer(config.getMQTTServer().c_str(), 1883);
+#endif
 
   //SysTick init
   os_timer_setfn(&SysTick, &SysTickHandler, NULL);
@@ -205,13 +207,13 @@ void setup() {
 //  Main Loop
 //===================================
 void loop() {
-
+  #if 0
   //MQTT client
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-
+  #endif
   //HTTP update server
   httpServer.handleClient();
   //Multicast DNS to respond to our URL
@@ -242,11 +244,9 @@ void loop() {
   //Also check if the LEDs can be turned off
   if (pubMQTT == true) {
     pubMQTT = false;
-
     if(client.connected()) {
       client.publish(config.getDistanceTopic().c_str(), String(distance).c_str(), true);
     } 
-
     //Update time client
     timeClient.update();
 
@@ -293,8 +293,11 @@ void reconnect()
       }
     }
   }
-  //Connected, update LWT topic
-  client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
+
+  if(client.connected()) {
+    //Connected, update LWT topic
+    client.publish(config.getLWTTopic().c_str(), config.getLWTConnected().c_str());
+  }
 }
 
 void handleRoot()

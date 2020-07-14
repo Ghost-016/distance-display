@@ -37,7 +37,7 @@ SOFTWARE.
 //Persistant parameters
 struct user_vars
 {
-  const int version = 1;
+  const int version = 2;
   float farDistance = 200.0;
   float midDistance = 75.0;
   float nearDistance = 40.0;
@@ -45,9 +45,9 @@ struct user_vars
   char upload_user[32] =  "admin" ;
   char upload_pwrd[32] =  "admin" ;
   char MQTT_server[16] =  "192.168.2.103" ;
-  char MQTT_client_name[32] = "ESP8266_GARAGE";
-  char distance_topic[64] = "sensor/garage/distance";
-  char lwt_topic[64] = "sensor/garage/status" ;
+  char MQTT_client_name[32] = "CHANGEME";
+  char distance_topic[64] = "CHANGEME";
+  char lwt_topic[64] = "CHANGEME/status" ;
   char lwt_status_disconnected[32] =  "disconnected" ;
   char lwt_status_running[32] =  "connected" ;
   uint8_t LEDbrightness = 50;

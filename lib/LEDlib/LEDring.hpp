@@ -29,10 +29,12 @@ SOFTWARE.
 class LEDring: public Adafruit_NeoPixel {
 private:
     int i;
-    enum State {Off, Green, Yellow, Red};
+    int val;
+    enum State {Off, Green, Yellow, ProgRed, Red};
     State state;
     int GreenLightservice();
     int YellowLightservice();
+    int ProgRedservice();
     int RedLightservice();
 
 public:
@@ -41,6 +43,7 @@ public:
     int off();
     int setGreen();
     int setYellow();
+    int setProgRed(int val);
     int setRed();
     int update();
 };

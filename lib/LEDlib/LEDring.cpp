@@ -71,6 +71,25 @@ int LEDring::setYellow()
   return (2);
 }
 
+/*
+  val from 0 - 8
+*/
+int LEDring::setProgRed(int val)
+{
+  //Reset i if transitioning
+  if(state != ProgRed) {
+    this->i = 0;
+  }
+
+  //Set state to Progressive Red
+  state = ProgRed;
+
+  //Set value
+  this->val = val;
+
+  return(4);
+}
+
 
 int LEDring::setRed()
 {
@@ -100,6 +119,9 @@ int LEDring::update()
     break;
   case Red:
     RedLightservice();
+    break;
+  case ProgRed:
+    ProgRedservice();
     break;
   default:
     off();
@@ -145,6 +167,47 @@ int LEDring::YellowLightservice()
   if (--this->i < 0) this->i = 3;
 
   return (2);
+}
+
+
+int LEDring::ProgRedservice()
+{
+  this->clear();
+
+  switch (this->val)
+  {
+  case 8:
+    this->setPixelColor(0, this->Color(50, 0, 0));
+    this->setPixelColor(15, this->Color(50, 0, 0));
+  case 7:
+    this->setPixelColor(1, this->Color(50, 0, 0));
+    this->setPixelColor(14, this->Color(50, 0, 0));
+  case 6:
+    this->setPixelColor(2, this->Color(50, 0, 0));
+    this->setPixelColor(13, this->Color(50, 0, 0));
+  case 5:
+    this->setPixelColor(3, this->Color(50, 0, 0));
+    this->setPixelColor(12, this->Color(50, 0, 0));
+  case 4:
+    this->setPixelColor(4, this->Color(50, 0, 0));
+    this->setPixelColor(11, this->Color(50, 0, 0));
+  case 3:
+    this->setPixelColor(5, this->Color(50, 0, 0));
+    this->setPixelColor(10, this->Color(50, 0, 0));
+  case 2:
+    this->setPixelColor(6, this->Color(50, 0, 0));
+    this->setPixelColor(9, this->Color(50, 0, 0));
+  case 1:
+    this->setPixelColor(7, this->Color(50, 0, 0));
+    this->setPixelColor(8, this->Color(50, 0, 0));
+    break;
+  default:
+    break;
+  }
+
+  this->show();
+
+  return(4);
 }
 
 

@@ -35,6 +35,8 @@ SOFTWARE.
     Outputs: LEDs via LEDring class
 
     Hardware requriements: neopixel capable pin
+
+    TODO: Change red zone to progressive red until red limit
 */
 
 #include "display.hpp"
@@ -71,10 +73,15 @@ void display::loop(float distance)
     if ((distance > m_config->getFarDistance()) || (distance < 0)) {
       ring->setGreen();
     }
-    else if ((distance < m_config->getMidDistance()) && (distance > (m_config->getNearDistance() + m_config->getHystDistance()))) {
+    else if ((distance >= m_config->getMidDistance()) && (distance < (m_config->getFarDistance() + m_config->getHystDistance()))) {
       ring->setYellow();
     }
-    else if ((distance < m_config->getNearDistance()) && (distance > 0.0)) {
+    else if ((distance > m_config->getNearDistance()) && (distance < m_config->getMidDistance())) {
+      //Determine from 0 - 8 where distance is between near and mid range (basically map the distance range to the range of 0-8)
+      int val = (m_config->getMidDistance() - distance) / ((m_config->getMidDistance() - m_config->getNearDistance()) / 8);
+      ring->setProgRed(val);
+    }
+    else if ((distance <= m_config->getNearDistance()) && (distance > 0.0)) {
       ring->setRed();
     }
   }
